@@ -1,10 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project name="ocisv3">
 
-    <property name="external.lib.path" value="/home/data/workspace/libraries/java"/>
-    <property name="webapps.dir" value="E:/apache-tomcat-8.0.8/webapps/"/>
-    <property name="temp.dir" value="D:/data/temp/"/>
-    <property name="war.name" value="v3"/>
+	<!-- server -->
+   <!-- <property name="external.lib.path" value="/home/data/workspace/libraries/java"/>
+    <property name="webapps.dir" value="/home/arifullah/apache-tomcat-7.0.57/webapps"/>
+    <property name="temp.dir" value="/home/arifullah/data/temp/"/>
+    <property name="war.name" value="v4"/> -->
+	
+	<!-- lokal -->
+	<property name="external.lib.path" value="/home/data/workspace/libraries/java"/>
+	<property name="webapps.dir" value="D:/Tomcat 8.0/webapps"/>
+	<property name="temp.dir" value="D:/Data/webapps/"/>
+	<property name="war.name" value="v6"/>
 
     <path id="compile.classpath">
         <fileset dir="WebContent/WEB-INF/lib">

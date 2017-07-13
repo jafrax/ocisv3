@@ -4,10 +4,15 @@ import com.imc.ocisv3.pojos.BenefitPOJO;
 import com.imc.ocisv3.pojos.ClaimPOJO;
 import com.imc.ocisv3.pojos.MemberPOJO;
 import com.imc.ocisv3.pojos.PolicyPOJO;
+
 import org.apache.poi.hssf.usermodel.HSSFCell;
 import org.apache.poi.hssf.usermodel.HSSFRow;
 import org.apache.poi.hssf.usermodel.HSSFSheet;
 import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Workbook;
 import org.hibernate.SQLQuery;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -16,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import org.zkoss.zk.ui.Desktop;
 import org.zkoss.zk.ui.Executions;
 import org.zkoss.zul.*;
+
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.text.DecimalFormat;
@@ -32,11 +38,246 @@ public class Libs {
     public static Properties config;
     public static SessionFactory sfDB;
     public static SessionFactory sfEDC;
+    public static SessionFactory sfOCIS;
+    
+    
     public static String[] months = new String[] { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" };
     public static String[] shortMonths = new String[] { "JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC" };
     public static int userLevel = 1;
     public static Map<String,String> restrictUserProductView = new HashMap<String,String>();
     public static Map<String,String> policyMap = new HashMap<String,String>();
+    
+    public static String getDbName(){
+    	return String.valueOf(Libs.config.get("ocis_db"));
+    }
+    
+    public static void getProduct(Combobox cb){
+    	cb.getItems().clear();
+    	cb.appendItem("All Products");
+    	 
+    	  Session s = Libs.sfOCIS.openSession();
+    	  try{
+    	    	String sql = "Select * from " +Libs.getDbName()+".dbo.F_OCISProduct(:idClient) where PolisStatus=:status order by PolisName";
+    	    	SQLQuery query = s.createSQLQuery(sql);
+    	    	query.setInteger("idClient", Libs.getNewInsuranceId());
+    	    	query.setString("status", "Active");
+    	    		
+    	    	List<Object[]> l = query.list();
+    	    	for(Object[] o : l){
+    	    		cb.appendItem(((String)o[1]).trim() + "("+ ((String) o[0]).trim() + ")");
+    	    	}
+    	    cb.setSelectedIndex(0);	
+    	    	
+    	  }catch(Exception e){
+    	    		log.error("getProduct", e);
+    	  }finally{
+    	  	if(s != null && s.isOpen()) s.close();
+    	  }
+    			
+    		
+    }
+    
+    public static Integer getNewClientId(String oldIdClient){
+    	Integer newClientId = null;
+    	String sql = "select ClientId from "+Libs.getDbName()+".dbo.V_MsClientGroup Where ClientIdOld=:oldId";
+    	Session s = Libs.sfOCIS.openSession();
+    	try{
+    		
+    		SQLQuery query = s.createSQLQuery(sql);
+    		query.setString("oldId", oldIdClient);
+    		
+    		newClientId =(Integer) query.uniqueResult();
+    		
+    	}catch(Exception e){
+    		log.error("getNewClientId",e);
+    	}finally{
+    		if (s!=null && s.isOpen()) s.close();
+    	}
+    	return newClientId;
+    }
+    
+    public static String[] getHospitalInvoice(String hid, Object prcode) {
+		String[] hasil = null;
+		int procode = ((BigDecimal)prcode).intValue();
+		String query = null;
+		
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+		
+		Session s = Libs.sfDB.openSession();
+		try{
+			
+			if(procode != 0){
+				if(hid.contains("OP")){
+					query = "SELECT No_Surat, Tgl_Terima_Adm FROM ASO.dbo.pre_op_provider where No_HID='"+hid.trim()+"' AND Flg='1'";
+					List<Object[]> l = s.createSQLQuery(query).list();
+					if(l.size() > 0){
+						Object[] o = l.get(0);
+						hasil = new String[]{Libs.nn(o[0]), sdf.format((Date)o[1])};
+					} 
+				}
+					
+				else if(hid.contains("IP")){
+					query = "SELECT NoSuratKwitansi, Tgl_Terima_Adm FROM ASO.dbo.pre_ip_provider where No_HID='"+hid.trim()+"' AND Flg='1'";
+					
+					List<Object[]> l = s.createSQLQuery(query).list();
+					if(l.size() > 0){
+						Object[] o = l.get(0);
+						hasil = new String[]{Libs.nn(o[0]), sdf.format((Date)o[1])};
+					}
+				}
+					
+			}else{
+				if(hid.contains("OP")){
+					query = "SELECT NoRef, Tgl_Terima_Adm FROM ASO.dbo.Pre_OP_Reimburse where No_HID='"+hid.trim()+"' AND Flg='1'";
+					List<Object[]> l = s.createSQLQuery(query).list();
+					if(l.size() > 0){
+						Object[] o = l.get(0);
+						hasil = new String[]{Libs.nn(o[0]), sdf.format((Date)o[1])};
+					}
+				}
+					
+				else if(hid.contains("IP")){
+					query = "SELECT NoRef, Tgl_Terima_Adm FROM ASO.dbo.Pre_IP_Reimburse where No_HID='"+hid.trim()+"' AND Flg='1'";
+					List<Object[]> l = s.createSQLQuery(query).list();
+					if(l.size() > 0){
+						Object[] o = l.get(0);
+						hasil = new String[]{Libs.nn(o[0]), sdf.format((Date)o[1])};
+					}
+					
+				}
+					
+			}
+			
+			
+		}catch(Exception e){
+			log.error("getHospitalInvoice", e);
+		}finally{
+			 if (s!=null && s.isOpen()) s.close();
+		}
+		return hasil;
+	}
+    
+    public static Double getPemakaianDana(String chequeNo, String insid){
+    	Session s = Libs.sfDB.openSession();
+    	Double result = 0.0;
+    	try{
+    		String query = "select ltrim(rtrim(Cat)) as cat, Nominal from idnhltpf.dbo.FinPemakaianDanaByTrans where CheckNo='"+ chequeNo+"' and Flg=1 and InsId";
+    		if(!insid.equals("")) query = query + " in  ("+insid+") ";
+    		else query = query + "='" + Libs.getInsuranceId() + "' "; 
+    		List<Object[]> l = s.createSQLQuery(query).list();
+    		for(Object[] o : l){
+    			if(Libs.nn(o[0]).equalsIgnoreCase("Biaya Meterai")) result = result - Double.valueOf(Libs.nn(o[1])).doubleValue();
+    			else result = result + Double.valueOf(Libs.nn(o[1])).doubleValue();
+    		}
+    	}catch(Exception e){
+    		log.error("getPemakaianDana", e);
+    	}finally{
+    		if (s!=null && s.isOpen()) s.close();
+    	}
+    	return result;
+    }
+    
+    public static Map<String, String> getOcisPolicyMap(){
+    	Map<String,String> policyMap = new HashMap<String,String>();
+    	Session s = Libs.sfOCIS.openSession();
+        try {
+        	
+        	String polis ="";
+            List polisList;
+            
+        	 polisList = Libs.getPolisByUserId(Libs.getUser());
+             for(int i=0; i < polisList.size(); i++){
+         		polis=polis+"'"+(String)polisList.get(i)+"'"+",";
+         	}
+             if(polis.length() > 1)polis = polis.substring(0, polis.length()-1);
+        	
+        	String insid="";
+        	List products = Libs.getProductByUserId(Libs.getUser());
+        	for(int i=0; i < products.size(); i++){
+        		insid=insid+"'"+(String)products.get(i)+"'"+",";
+        	}
+        	if(insid.length() > 1)insid = insid.substring(0, insid.length()-1);
+        	
+            String qry = "select polisNo, clientName from IMCare.dbo.V_ClientProduct where clientIdOld ";
+            if(products.size() > 0) qry = qry + " in  ("+insid+") ";
+            else qry = qry + "='" + Libs.getInsuranceId() + "' ";
+            		
+            		
+                    
+            List<Object[]> l = s.createSQLQuery(qry).list();
+            for (Object[] o : l) {
+                policyMap.put(Libs.nn(o[0]), Libs.nn(o[1]).trim());
+            }
+        } catch (Exception ex) {
+            log.error("getOcisPolicyMap", ex);
+        } finally {
+            if (s!=null && s.isOpen()) s.close();
+        }
+        
+        return policyMap;
+    }
+    
+    
+    public static Map<String, String> getPolicyMap(){
+    	Map<String,String> policyMap = new HashMap<String,String>();
+    	Session s = Libs.sfDB.openSession();
+        try {
+        	
+        	String polis ="";
+            List polisList;
+            
+        	 polisList = Libs.getPolisByUserId(Libs.getUser());
+             for(int i=0; i < polisList.size(); i++){
+         		polis=polis+"'"+(String)polisList.get(i)+"'"+",";
+         	}
+             if(polis.length() > 1)polis = polis.substring(0, polis.length()-1);
+        	
+        	String insid="";
+        	List products = Libs.getProductByUserId(Libs.getUser());
+        	for(int i=0; i < products.size(); i++){
+        		insid=insid+"'"+(String)products.get(i)+"'"+",";
+        	}
+        	if(insid.length() > 1)insid = insid.substring(0, insid.length()-1);
+        	
+            String qry = "select "
+                    + "(convert(varchar,a.hhdryy)+'-'+convert(varchar,a.hhdrbr)+'-'+convert(varchar,a.hhdrdist)+'-'+convert(varchar,a.hhdrpono)) as policy, "
+                    + "a.hhdrname "
+                    + "from idnhltpf.dbo.hlthdr a "
+                    + "where a.hhdrinsid";
+            
+            		if(products.size() > 0) qry = qry + " in  ("+insid+") ";
+            		else qry = qry + "='" + Libs.getInsuranceId() + "' ";
+            		
+            		if(polisList.size() > 0){
+            			qry = qry + "and convert(varchar,a.hhdryy)+'-'+convert(varchar,a.hhdrbr)+'-'+convert(varchar,a.hhdrdist)+'-'+convert(varchar,a.hhdrpono) "
+            					  + "in ("+polis+") ";
+            		} 
+                    
+            		/*
+            		 * Author : Heri Siswanto BN
+            		 * Date : 14 August 2014
+            		 * Updae : Ordered by date (Reguest Mr Jame)
+            		 */
+            		
+            		if(Executions.getCurrent().getSession().getAttribute("insuranceId") != "99999"){
+            			//qry = qry + " and ='"+Executions.getCurrent().getSession().getAttribute("insuranceId")+"'";
+            		}
+            		//qry= qry + "order by a.hhdrname desc ";
+            		
+                    qry= qry + "order by a.hhdradtyy desc, a.hhdradtmm desc, a.hhdradtdd desc";
+                    
+            List<Object[]> l = s.createSQLQuery(qry).list();
+            for (Object[] o : l) {
+                policyMap.put(Libs.nn(o[0]), Libs.nn(o[1]).trim());
+            }
+        } catch (Exception ex) {
+            log.error("getPolicies", ex);
+        } finally {
+            if (s!=null && s.isOpen()) s.close();
+        }
+        
+        return policyMap;
+    }
 
     public static org.zkoss.zk.ui.Session getSession() {
         return Executions.getCurrent().getSession();
@@ -46,12 +287,17 @@ public class Libs {
         return Executions.getCurrent().getDesktop();
     }
 
+    public static Integer getNewInsuranceId() {
+        return (Integer)Executions.getCurrent().getSession().getAttribute("insuranceId");
+    }
+    
     public static String getInsuranceId() {
         return Libs.nn(Executions.getCurrent().getSession().getAttribute("insuranceId"));
     }
 
     public static String getUser() {
-        return Libs.nn(Executions.getCurrent().getSession().getAttribute("u"));
+//        return Libs.nn(Executions.getCurrent().getSession().getAttribute("u"));
+    	return (String)Executions.getCurrent().getSession().getAttribute("u");
     }
     
     public static String getUserId() {
@@ -136,12 +382,12 @@ public class Libs {
     public static List getProductByUserId(String userId){
     	List product = null;
     	
-    	Session edcSession = Libs.sfEDC.openSession();
+    	Session edcSession = Libs.sfDB.openSession();
     	
     	try{
-    		String query = "SELECT product FROM OCIS.dbo.CIS_User_Product WHERE user_id=:userId";
+    		String query = "SELECT product FROM OCIS.dbo.CIS_User_Product WHERE user_id='"+userId+"'";
     		SQLQuery q = edcSession.createSQLQuery(query);
-    		q.setString("userId", Libs.getUser());
+//    		q.setString("userId", Libs.getUser());
     		
     		product = q.list();
     		
@@ -153,6 +399,25 @@ public class Libs {
     	}
     	
     	return product;
+    }
+    
+    public static List getPolisByUserId(String userId){
+    	
+    	Session s = Libs.sfDB.openSession();
+    	
+    	try{
+    		String query = "SELECT polis FROM OCIS.dbo.CIS_User_Polis WHERE user_id='"+userId+"'";
+    		SQLQuery q = s.createSQLQuery(query);
+    		return q.list();
+    		
+    	}catch(Exception e){
+    		log.error("getPolisByUserId", e);
+    		
+    	}finally{
+    		if(s != null && s.isOpen()) s.close();
+    	}
+
+    	return null;
     }
 
     public static String getProposed() {
@@ -180,7 +445,7 @@ public class Libs {
         int column = 0;
         for (Object o : values) {
             HSSFCell c = r.createCell(column);
-
+            
             if (o instanceof String) {
                 c.setCellType(Cell.CELL_TYPE_STRING);
                 c.setCellValue(o.toString());
@@ -199,7 +464,172 @@ public class Libs {
             column++;
         }
     }
+    
+    public static boolean isFamilyLimit(PolicyPOJO policy, String planType){
+    	boolean isFamily = false;
+    	Session s = Libs.sfEDC.openSession();
+    	try{
+    		String sql = "SELECT count(1) FROM EDC_PRJ.dbo.LimitKeluarga "
+     			   + "where ThnPolis="+policy.getYear()+ " and nopolis="+policy.getPolicy_number()+" and Tipe='"+planType+"' ";
+    		Integer hasil = (Integer)s.createSQLQuery(sql).uniqueResult();
+    		if(hasil > 0) isFamily = true;
 
+    	}catch(Exception e){
+    		log.error("isFamilyLimit",e);
+    	}finally{
+    		if (s!=null && s.isOpen()) s.close();
+    	}
+    	    	return isFamily;
+    }
+    
+    /**
+     * 
+     * @param policy
+     * @param index
+     * @param sequence
+     * @param planCode
+     * @param planType
+     * @return an array of object (Object[]) : object[0] = claim counter , object[1] = claim usage
+     */
+    public static Object[] getPlanUsage(PolicyPOJO policy, String index, String sequence, String planCode, String planType){
+    	Session s = Libs.sfDB.openSession();
+    	Object[] o = null;
+    	try{
+    		String q = "select count(*), "
+                    + "sum(" + Libs.runningFields("hclmaamt", 1, 30, true) + ") as approved "
+                    + "from idnhltpf.dbo.hltclm "
+                    + "where "
+                    + "hclmyy=" + policy.getYear() + " and hclmpono=" + policy.getPolicy_number() + " "
+                    + "and hclmidxno=" + index + " and hclmseqno='" + sequence + "' "
+                    + "and hclmtclaim='"+planType+"' "
+                    + "and hclmrecid<>'C' ";
+    		
+    		if(index.equalsIgnoreCase("264"))System.out.println("query dodol banyaknya usage : " +q);
+
+            o = (Object[]) s.createSQLQuery(q).uniqueResult();
+
+    	}catch(Exception e){
+    		log.error("getPlanUsage", e);
+    	}finally{
+    		if (s!=null && s.isOpen()) s.close();
+    	}
+    	return o;
+    }
+    
+    public static Double getFamilyUsage(PolicyPOJO policy, String index, String planType){
+    	Double familyUsage = 0.0;
+    	Session s = Libs.sfDB.openSession();
+    	try{
+    		String q = "select "
+                    + "sum(" + Libs.runningFields("hclmaamt", 1, 30, true) + ") as approved "
+                    + "from idnhltpf.dbo.hltclm "
+                    + "where "
+                    + "hclmyy=" + policy.getYear() + " and hclmpono=" + policy.getPolicy_number() + " "
+                    + "and hclmidxno=" + index + " "
+                    + "and hclmtclaim='"+planType+"' "
+                    + "and hclmrecid<>'C' ";
+    	BigDecimal result = (BigDecimal)s.createSQLQuery(q).uniqueResult();	
+    	if(result != null)familyUsage = result.doubleValue(); 
+    		
+    	}catch(Exception e){
+    		log.error("getFamilyUsage",e);
+    	}finally{
+    		if (s!=null && s.isOpen()) s.close();
+    	}
+    	return familyUsage;
+    }
+    
+    public static String isReimbursementOnly(int NoPolis, String planType, String providerPlan){
+    	String result = null;
+    	Session s = Libs.sfEDC.openSession();
+    	try{
+    		String qry = "SELECT b.Plan2 FROM EDC_PRJ.dbo.ChangePlanCat a "
+     			   + "INNER JOIN EDC_PRJ.dbo.ChangePlan b ON a.No_Polis=b.No_Polis "
+     			   + "WHERE a.No_Polis='"+NoPolis+"' and a.PlanType='"+planType+"' and b.Plan1='"+providerPlan+"' and b.Flg=1";
+    		result = (String) s.createSQLQuery(qry).uniqueResult();
+    	}catch(Exception e){
+    		log.error("isReimbursementOnly", e);
+    	}finally{
+    		if (s!=null && s.isOpen()) s.close();
+    	}
+    	return result;
+    }
+
+    public static BenefitPOJO getBenefit(String policyNumber, String planCode, String index, String seq, String planType) {
+        BenefitPOJO benefitPOJO = new BenefitPOJO();
+        Session s = Libs.sfDB.openSession();
+        try {
+            String qry = "select "
+                    + "a.hbftlmtamt, "
+                    + Libs.createListFieldString("a.hbftbcd") + " "
+                    + "from idnhltpf.dbo.hltbft a "
+                    + "where "
+                    + "(convert(varchar,a.hbftyy)+'-'+convert(varchar,a.hbftbr)+'-'+convert(varchar,a.hbftdist)+'-'+convert(varchar,a.hbftpono))='" + policyNumber + "' and "
+                    + "ltrim(rtrim(a.hbftcode))='" + planCode + "' ";
+
+            List<Object[]> l = s.createSQLQuery(qry).list();
+            if (l.size()==1) {
+                Object[] o = l.get(0);
+                benefitPOJO.setPlan_code(planCode);
+                
+                //check if limit gaji
+                double limitGaji = getLimitGaji(policyNumber, planCode, index, seq, planType);
+                if(limitGaji > 0){
+                	benefitPOJO.setLimit(limitGaji);
+                	benefitPOJO.setLimitGaji(true);
+                }else{
+                	benefitPOJO.setLimit(Double.valueOf(Libs.nn(o[0])));
+                }
+               
+                for (int i=0; i<30; i++) {
+                    benefitPOJO.getPlan_items().add(Libs.nn(o[i+1]).trim());
+                }
+            }
+        } catch (Exception ex) {
+            log.error("getBenefit", ex);
+        } finally {
+            if (s!=null && s.isOpen()) s.close();
+        }
+        return benefitPOJO;
+    }
+    
+    /**
+     * 
+     * @param policyNumber
+     * @param planCode
+     * @param index
+     * @param seq
+     * @param planType must be 'I', 'O', 'R', 'D', 'G'
+     * @return
+     */
+    public static Double getLimitGaji(String policyNumber, String planCode, String index, String seq, String planType){
+    	Double limit = 0.0;
+    	Session s = Libs.sfDB.openSession();
+    	String[] polis = policyNumber.split("-");
+    	try{
+    		String q = "select hgajilmt "
+                    + "from idnhltpf.dbo.hltgajisuh "
+                    + "where "
+                    + "hgajiid='"+planType+"' "
+                    + "and hgajiyy=" + polis[0] + " "
+                    + "and hgajibr="+ polis[1] + " "
+                    + "and hgajidist="+ polis[2] + " "
+                    + "and hgajipono=" + polis[3] + " "
+                    + "and hgajiidxno=" + index + " "
+                    + "and hgajiseqno='" + seq + "' ";
+
+          BigDecimal  result = (BigDecimal) s.createSQLQuery(q).uniqueResult();
+          if(result != null) limit = result.doubleValue();
+
+    	}catch(Exception e){
+    		log.error("getLimitGaji",e);
+    	}finally{
+    		if (s!=null && s.isOpen()) s.close();
+    	}
+    	
+    	return limit;
+    }
+    
     public static BenefitPOJO getBenefit(String policyNumber, String planCode) {
         BenefitPOJO benefitPOJO = new BenefitPOJO();
         Session s = Libs.sfDB.openSession();
@@ -228,6 +658,35 @@ public class Libs {
             if (s!=null && s.isOpen()) s.close();
         }
         return benefitPOJO;
+    }
+    
+    public static Object[] getBenefit(String policyNumber, String planCode, int index){
+    	Session s = Libs.sfDB.openSession();
+    	Object[] result = new Object[3];
+    	
+    	try{
+        	String[] polis = policyNumber.split("-");
+        	String qry = "select a.hbftbcd"+index+ ", a.hbftbpln"+index+" from idnhltpf.dbo.hltbft a "
+        			   + "where HBFTYY="+polis[0] +" and HBFTBR="+polis[1] + " and HBFTDIST="+polis[2]+" and HBFTPONO="+polis[3]+" and HBFTCODE='"+planCode+"' ";
+        	
+//        	System.out.println(qry);
+        	
+        	 List<Object[]> l = s.createSQLQuery(qry).list();
+        	 if (l.size()==1) {
+                 Object[] o = l.get(0);
+                 result[0] = Libs.nn(o[0]);
+                 result[1] = o[1];
+                 result[2] = getBenefitItemDescription(Libs.nn(o[0]));
+             }
+
+    	}catch(Exception e){
+    		log.error("getBenefit", e);
+    	}finally{
+    		if (s!=null && s.isOpen()) s.close();
+    	}
+    	    	
+    	
+    	return result;
     }
 
     public static Double[] getRemainingFamilyLimit(String policyNumber, String index, String planCode) {
@@ -368,11 +827,14 @@ public class Libs {
                 icds += "'" + icd.trim() + "', ";
             }
             if (icds.endsWith(", ")) icds = icds.substring(0, icds.length()-2);
+            
+            String qry = "select ltrim(rtrim((HICDCODE1+HICDCODE2))) as icdCode, (HICDDESC1+HICDDESC2) as deskrips from IDNHLTPF.dbo.hlticd "
+            		   + "where ltrim(rtrim((HICDCODE1+HICDCODE2))) in (" + icds + ") ";
 
-            String qry = "select "
+            /*String qry = "select "
                     + "icd_code, description "
                     + "from imcs.dbo.icds "
-                    + "where icd_code in (" + icds + ") ";
+                    + "where icd_code in (" + icds + ") ";*/
 
             List<Object[]> l = s.createSQLQuery(qry).list();
             for (Object[] o : l) {
@@ -381,6 +843,40 @@ public class Libs {
             if (result.endsWith(", ")) result = result.substring(0, result.length()-2);
         } catch (Exception ex) {
             log.error("getICDByCode", ex);
+        } finally {
+            if (s!=null && s.isOpen()) s.close();
+        }
+
+        return result;
+    }
+    
+    public static String getICDAlias(String icds) {
+        String result = "";
+        Session s = Libs.sfDB.openSession();
+        try {
+            String[] icdseg = icds.split("\\,");
+            icds = "";
+            for (String icd : icdseg) {
+                icds += "'" + icd.trim() + "', ";
+            }
+            if (icds.endsWith(", ")) icds = icds.substring(0, icds.length()-2);
+            
+            String qry = "select (HCDCODE1+HCDCODE2) as icdCode, (HCDALIAS) as deskrips from IDNHLTPF.dbo.HLTICDALIAS "
+            		   + "where (HCDCODE1+HCDCODE2) in (" + icds + ") ";
+
+            /*String qry = "select "
+                    + "icd_code, description "
+                    + "from imcs.dbo.icds "
+                    + "where icd_code in (" + icds + ") ";*/
+
+            List<Object[]> l = s.createSQLQuery(qry).list();
+            for (Object[] o : l) {
+            	if(!Libs.nn(o[1]).trim().equals(""))
+                 result += Libs.nn(o[1]).trim() + " (" + Libs.nn(o[0]) + "), ";
+            }
+            if (result.endsWith(", ")) result = result.substring(0, result.length()-2);
+        } catch (Exception ex) {
+            log.error("getICDAlias", ex);
         } finally {
             if (s!=null && s.isOpen()) s.close();
         }
@@ -674,6 +1170,13 @@ public class Libs {
         if (result.endsWith("+") || result.endsWith(",")) result = result.substring(0, result.length()-1);
         return result;
     }
+    
+    public static String formatDate(Date date){
+    	SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy");
+    	if(date != null)
+    		return sdf.format(date);
+    	else return "";
+    }
 
     public static String fixDate(String date) {
         String[] seg = date.split("\\-");
@@ -686,5 +1189,134 @@ public class Libs {
 
         return seg[0] + "-" + segM + "-" + segD;
     }
+    
+    public static Map<String, CellStyle> createStyles(Workbook wb) {
+		 Map<String, CellStyle> styles = new HashMap<String, CellStyle>();
+	        CellStyle style;
+	        Font titleFont = wb.createFont();
+	        titleFont.setFontHeightInPoints((short)11);
+	        titleFont.setBoldweight(Font.BOLDWEIGHT_BOLD);
+	        style = wb.createCellStyle();
+	        style.setAlignment(CellStyle.ALIGN_CENTER);
+	        style.setVerticalAlignment(CellStyle.VERTICAL_CENTER);
+	        style.setFont(titleFont);
+	        styles.put("title", style);
+
+	        Font monthFont = wb.createFont();
+	        monthFont.setFontHeightInPoints((short)8);
+	        monthFont.setColor(IndexedColors.WHITE.getIndex());
+	        style = wb.createCellStyle();
+	        style.setAlignment(CellStyle.ALIGN_LEFT);
+	        style.setVerticalAlignment(CellStyle.VERTICAL_CENTER);
+	        style.setFillForegroundColor(IndexedColors.GREY_50_PERCENT.getIndex());
+	        style.setFillPattern(CellStyle.SOLID_FOREGROUND);
+	        style.setFont(monthFont);
+	        style.setWrapText(true);
+	        styles.put("header", style);
+	        
+	        Font hf = wb.createFont();
+	        hf.setFontHeightInPoints((short)8);
+	        hf.setBoldweight(Font.BOLDWEIGHT_BOLD);
+	        style = wb.createCellStyle();
+	        style.setAlignment(CellStyle.ALIGN_LEFT);
+	        style.setVerticalAlignment(CellStyle.VERTICAL_CENTER);
+	        style.setFont(hf);
+	        styles.put("header2", style);
+	        
+	        
+	        style = wb.createCellStyle();
+	        style.setAlignment(CellStyle.ALIGN_CENTER);
+	        style.setVerticalAlignment(CellStyle.VERTICAL_CENTER);
+	        style.setFont(hf);
+	        styles.put("header3", style);
+
+	        Font cellFont = wb.createFont();
+	        cellFont.setFontHeightInPoints((short)8);
+	        style = wb.createCellStyle();
+	        style.setAlignment(CellStyle.ALIGN_LEFT);
+//	        style.setWrapText(true);
+	        style.setBorderRight(CellStyle.BORDER_THIN);
+	        style.setRightBorderColor(IndexedColors.BLACK.getIndex());
+	        style.setBorderLeft(CellStyle.BORDER_THIN);
+	        style.setLeftBorderColor(IndexedColors.BLACK.getIndex());
+	        style.setBorderTop(CellStyle.BORDER_THIN);
+	        style.setTopBorderColor(IndexedColors.BLACK.getIndex());
+	        style.setBorderBottom(CellStyle.BORDER_THIN);
+	        style.setBottomBorderColor(IndexedColors.BLACK.getIndex());
+	        style.setFont(cellFont);
+	        styles.put("cell", style);
+	        
+	        style = wb.createCellStyle();
+	        style.setAlignment(CellStyle.ALIGN_LEFT);
+	        style.setFont(cellFont);
+	        styles.put("cell2", style);
+	        
+	        style = wb.createCellStyle();
+	        style.setAlignment(CellStyle.ALIGN_RIGHT);
+//	        style.setWrapText(true);
+	        style.setBorderRight(CellStyle.BORDER_THIN);
+	        style.setRightBorderColor(IndexedColors.BLACK.getIndex());
+	        style.setBorderLeft(CellStyle.BORDER_THIN);
+	        style.setLeftBorderColor(IndexedColors.BLACK.getIndex());
+	        style.setBorderTop(CellStyle.BORDER_THIN);
+	        style.setTopBorderColor(IndexedColors.BLACK.getIndex());
+	        style.setBorderBottom(CellStyle.BORDER_THIN);
+	        style.setBottomBorderColor(IndexedColors.BLACK.getIndex());
+	        style.setFont(cellFont);
+	        styles.put("cell_angka", style);
+	        
+	        Font cellFontBold = wb.createFont();
+	        cellFontBold.setFontHeightInPoints((short)8);
+	        cellFontBold.setBoldweight(Font.BOLDWEIGHT_BOLD);
+	        style = wb.createCellStyle();
+	        style.setAlignment(CellStyle.ALIGN_RIGHT);
+//	        style.setWrapText(true);
+//	        style.setBorderRight(CellStyle.BORDER_THIN);
+//	        style.setRightBorderColor(IndexedColors.BLACK.getIndex());
+//	        style.setBorderLeft(CellStyle.BORDER_THIN);
+//	        style.setLeftBorderColor(IndexedColors.BLACK.getIndex());
+//	        style.setBorderTop(CellStyle.BORDER_THIN);
+//	        style.setTopBorderColor(IndexedColors.BLACK.getIndex());
+//	        style.setBorderBottom(CellStyle.BORDER_THIN);
+//	        style.setBottomBorderColor(IndexedColors.BLACK.getIndex());
+	        style.setFont(cellFontBold);
+	        styles.put("cell_angka_bold", style);
+
+	        style = wb.createCellStyle();
+	        style.setAlignment(CellStyle.ALIGN_CENTER);
+	        style.setVerticalAlignment(CellStyle.VERTICAL_CENTER);
+	        style.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+	        style.setFillPattern(CellStyle.SOLID_FOREGROUND);
+	        style.setDataFormat(wb.createDataFormat().getFormat("0.00"));
+	        styles.put("formula", style);
+
+	        style = wb.createCellStyle();
+	        style.setAlignment(CellStyle.ALIGN_CENTER);
+	        style.setVerticalAlignment(CellStyle.VERTICAL_CENTER);
+	        style.setFillForegroundColor(IndexedColors.GREY_40_PERCENT.getIndex());
+	        style.setFillPattern(CellStyle.SOLID_FOREGROUND);
+	        style.setDataFormat(wb.createDataFormat().getFormat("0.00"));
+	        styles.put("formula_2", style);
+
+	        return styles;
+	}
+
+	public static String getRefDescription(String ref) {
+		Session s = sfDB.openSession();
+		String result = "";
+        try {
+            String q = "select name from idnhltpf.dbo.ms_rejdelaycode where id='"+ref+"' ";
+            result = (String) s.createSQLQuery(q).uniqueResult();
+            
+            //System.out.println(q + " hasilnya : "+result);
+            
+        } catch (Exception ex) {
+            log.error("getRefDescription", ex);
+        } finally {
+            s.close();
+        }
+
+		return result;
+	}
 
 }

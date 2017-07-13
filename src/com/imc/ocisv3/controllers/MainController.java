@@ -17,12 +17,23 @@ public class MainController extends Window {
 
     private Logger log = LoggerFactory.getLogger(MainController.class);
     private Tree tree;
+    private Treeitem finDA;
     private Image imgCompanyLogo;
+    
+    private String polis ="";
+    private List polisList;
 
     public void onCreate() {
         if (!Libs.checkSession()) {
             initComponents();
-            getPolicies();
+            
+            polisList = Libs.getPolisByUserId(Libs.getUser());
+            for(int i=0; i < polisList.size(); i++){
+        		polis=polis+"'"+(String)polisList.get(i)+"'"+",";
+        	}
+            if(polis.length() > 1)polis = polis.substring(0, polis.length()-1);
+            
+//            getPolicies();
             open("Dashboard");
             setVisible(true);
         }
@@ -31,6 +42,7 @@ public class MainController extends Window {
     private void initComponents() {
         tree = (Tree) getFellow("tree");
         imgCompanyLogo = (Image) getFellow("imgCompanyLogo");
+        finDA = (Treeitem)getFellow("finDA");
 
         Libs.getDesktop().setAttribute("rootWindow", this);
         Libs.getDesktop().setAttribute("center", getFellow("center"));
@@ -48,8 +60,16 @@ public class MainController extends Window {
         }
 
         imgCompanyLogo.setSrc(imageFile);
-
-        if (Libs.userLevel==1) getFellow("tiClientSelection").setVisible(true);
+        
+        Integer userlevel = (Integer)Executions.getCurrent().getSession().getAttribute("userLevel");
+        if(userlevel.intValue() == 1){
+        	getFellow("tiClientSelection").setVisible(true);
+        	finDA.setVisible(true);
+        }else{
+        	getFellow("tiClientSelection").setVisible(false);
+        	finDA.setVisible(false);
+        }
+        
     }
 
     private void getPolicies() {
@@ -70,8 +90,13 @@ public class MainController extends Window {
                     + "from idnhltpf.dbo.hlthdr a "
                     + "where a.hhdrinsid";
             
-            		if(products.size() > 0) qry = qry + " in  ("+insid+")";
-            		else qry = qry + "='" + Libs.getInsuranceId() + "' ";  
+            		if(products.size() > 0) qry = qry + " in  ("+insid+") ";
+            		else qry = qry + "='" + Libs.getInsuranceId() + "' ";
+            		
+            		if(polisList.size() > 0){
+            			qry = qry + "and convert(varchar,a.hhdryy)+'-'+convert(varchar,a.hhdrbr)+'-'+convert(varchar,a.hhdrdist)+'-'+convert(varchar,a.hhdrpono) "
+            					  + "in ("+polis+") ";
+            		} 
                     
             		/*
             		 * Author : Heri Siswanto BN
@@ -120,8 +145,9 @@ public class MainController extends Window {
     }
 
     public void openReportGenerator() {
-        Window w = (Window) Executions.createComponents("/views/ReportGenerator.zul", this, null);
-        w.doModal();
+//        Window w = (Window) Executions.createComponents("/views/ReportGenerator.zul", this, null);
+    	 Window w = (Window) Executions.createComponents("/views/ReportList.zul", this, null);
+         w.doModal();
     }
 
 }

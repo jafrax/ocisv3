@@ -19,7 +19,7 @@
     </system-config>
 
     <session-config>
-        <session-timeout>300</session-timeout>
+        <session-timeout>1800</session-timeout>
         <timer-keep-alive>false</timer-keep-alive>
         <device-type>ajax</device-type>
         <timeout-uri>index.zul</timeout-uri>

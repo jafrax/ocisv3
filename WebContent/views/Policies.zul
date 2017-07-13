@@ -22,10 +22,17 @@
                         <toolbar align="end" height="21px">
                             <image src="resources/icons/browse.png"/>
                             <textbox id="tQuickSearch" onOK="spaceOwner.quickSearch();"/>
+                            <combobox id="cbProduct" readonly="true" width="100px" onSelect="spaceOwner.productSelected();">
+                             	<comboitem label="ACTIVE"/>
+                             	<comboitem label="MATURE"/>
+                             	<comboitem label="ALL"/>
+                             </combobox>
+                             <a label="GO" style="color:#00bbee;text-decoration :none" onClick="spaceOwner.quickSearch();"/>
+                             <space/>
                         </toolbar>
                     </hbox>
                    <!--  <listbox id="lb" width="100%" height="100%" vflex="true" style="border-left:0px none; white-space:nowrap;" onSelect="spaceOwner.lbSelected();" onDoubleClick="spaceOwner.showPolicyDetail();"> -->
-                    <listbox id="lb" width="100%" height="100%" vflex="true" style="border-left:0px none; white-space:nowrap;" onSelect="spaceOwner.lbSelected();" >
+                    <listbox id="lb" width="100%" height="100%" vflex="true" style="border-left:0px none; white-space:nowrap;" >
                         <listhead>
                             <listheader label="Product Number" width="120px"/>
                             <listheader label="Name"/>

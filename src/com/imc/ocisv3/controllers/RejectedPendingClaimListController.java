@@ -46,11 +46,21 @@ public class RejectedPendingClaimListController extends Window {
     private String where;
     private String queryString;
     private String userProductViewrestriction;
+    
+    private String polis ="";
+    private List polisList;
 
     public void onCreate() {
         if (!Libs.checkSession()) {
             userProductViewrestriction = Libs.restrictUserProductView.get(Libs.getUser());
             initComponents();
+            
+            polisList = Libs.getPolisByUserId(Libs.getUser());
+            for(int i=0; i < polisList.size(); i++){
+        		polis=polis+"'"+(String)polisList.get(i)+"'"+",";
+        	}
+            if(polis.length() > 1)polis = polis.substring(0, polis.length()-1);
+            
             populateCount();
             populate(0, pg.getPageSize());
         }
@@ -72,8 +82,10 @@ public class RejectedPendingClaimListController extends Window {
         cbPolicy.appendItem("All Products");
         cbPolicy.setSelectedIndex(0);
         boolean show = true;
-        for (String s : Libs.policyMap.keySet()) {
-            String policyName = Libs.policyMap.get(s);
+//        for (String s : Libs.policyMap.keySet()) {
+        for (String s : Libs.getPolicyMap().keySet()) {
+//            String policyName = Libs.policyMap.get(s);
+        	String policyName = Libs.getPolicyMap().get(s);
             if (Libs.config.get("demo_mode").equals("true") && Libs.getInsuranceId().equals("00051")) policyName = Libs.nn(Libs.config.get("demo_name"));
 
             if (!Libs.nn(userProductViewrestriction).isEmpty()) {
@@ -106,6 +118,13 @@ public class RejectedPendingClaimListController extends Window {
                     + "b.hhdrinsid";
     				if(products.size() > 0) qry = qry + " in  ("+insid+") ";
     				else qry = qry + "='" + Libs.getInsuranceId() + "' ";  
+    				
+    				
+    				if(polisList.size() > 0){
+            			qry = qry + "and convert(varchar,b.hhdryy)+'-'+convert(varchar,b.hhdrbr)+'-'+convert(varchar,b.hhdrdist)+'-'+convert(varchar,b.hhdrpono) "
+            					  + "in ("+polis+") ";
+            		} 
+    				
     				
     				if (cbPolicy.getSelectedIndex()>0) {
     	                String policy = cbPolicy.getSelectedItem().getLabel();
@@ -168,6 +187,12 @@ public class RejectedPendingClaimListController extends Window {
                     + "b.hhdrinsid";
     				if(products.size() > 0) qry = qry + " in  ("+insid+")";
     				else qry = qry + "='" + Libs.getInsuranceId() + "' ";  
+    				
+    				if(polisList.size() > 0){
+            			qry = qry + "and convert(varchar,b.hhdryy)+'-'+convert(varchar,b.hhdrbr)+'-'+convert(varchar,b.hhdrdist)+'-'+convert(varchar,b.hhdrpono) "
+            					  + "in ("+polis+") ";
+            		} 
+    				
                     qry= qry + "and a.hclmrecid in ('D', 'R') ";
 
             if (!Libs.nn(userProductViewrestriction).isEmpty()) qry += "and b.hhdrpono in (" + userProductViewrestriction + ") ";
@@ -296,6 +321,12 @@ public class RejectedPendingClaimListController extends Window {
                      + "b.hhdrinsid";
             		if(products.size() > 0) qry = qry + " in  ("+insid+") ";
             		else qry = qry + "='" + Libs.getInsuranceId() + "' ";  
+            		
+            		
+            		if(polisList.size() > 0){
+            			qry = qry + "and convert(varchar,b.hhdryy)+'-'+convert(varchar,b.hhdrbr)+'-'+convert(varchar,b.hhdrdist)+'-'+convert(varchar,b.hhdrpono) "
+            					  + "in ("+polis+") ";
+            		} 
             		
             		if (cbPolicy.getSelectedIndex()>0) {
     	                String policy = cbPolicy.getSelectedItem().getLabel();
@@ -587,6 +618,11 @@ public class RejectedPendingClaimListController extends Window {
                     
                     		if(products.size() > 0) qry = qry + " in  ("+insid+") ";
                     		else qry = qry + "='" + Libs.getInsuranceId() + "' "; 
+                    		
+                    		if(polisList.size() > 0){
+                    			qry = qry + "and convert(varchar,b.hhdryy)+'-'+convert(varchar,b.hhdrbr)+'-'+convert(varchar,b.hhdrdist)+'-'+convert(varchar,b.hhdrpono) "
+                    					  + "in ("+polis+") ";
+                    		} 
                     		
                             qry = qry + "and a.recid in ('R', 'D') ";
                             

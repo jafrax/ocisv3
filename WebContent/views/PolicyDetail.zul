@@ -5,15 +5,14 @@
                 <label value="Product Detail" style="font-size: 24pt; color: #999999;"/>
                 <label id="lPolicy" style="color: #999999;"/>
                 <space height="10px"/>
+            	<a label="Back" style="color:#00bbee;text-decoration :none" onClick="spaceOwner.back();" />
             </vlayout>
            
         </north>
         <center style="border:0px none;">
         <panel width="100%" height="100%">
          <panelchildren>
-         	 <toolbar height="21px">
-        		<a label="Back" style="color:#00bbee;text-decoration :none" onClick="spaceOwner.back();" />
-        	</toolbar>	
+         	 
             <tabbox width="100%" height="100%">
                 <tabs>
                     <tab label="Plans List"/>
@@ -37,7 +36,7 @@
                                     </vlayout>
                                     <listbox id="lbPlanItems" width="100%" height="100%" vflex="true" style="white-space:nowrap;">
                                         <listhead>
-                                            <listheader label="Code" width="50px"/>
+                                            <!-- <listheader label="Code" width="50px"/> -->
                                             <listheader label="Benefit Description"/>
                                             <listheader label="Limit" width="120px"/>
                                             <listheader label="Description"/>
@@ -67,16 +66,15 @@
                                         <listheader label="Status" width="80px"/>
                                         <listheader label="Policy Number" width="100px"/>
                                         <listheader label="ID Number" width="100px"/>
-                                        <listheader id="lhEmployeeId" label="Employee ID" width="70px" visible="false"/>
                                         <listheader label="Policy Holder Name" width="250px"/>
                                         <listheader label="DOB" width="80px"/>
                                         <listheader label="Age" width="80px"/>
                                         <listheader label="Sex" width="80px"/>
-                                        <listheader label="IP" width="80px"/>
-                                        <listheader label="OP" width="80px"/>
-                                        <listheader label="Maternity" width="50px"/>
-                                        <listheader label="Dental" width="50px"/>
-                                        <listheader label="Glasses" width="50px"/>
+                                        <listheader label="IP" width="120px"/>
+                                        <listheader label="OP" width="120px"/>
+                                        <listheader label="Maternity" width="120px"/>
+                                        <listheader label="Dental" width="120px"/>
+                                        <listheader label="Glasses" width="120px"/>
                                         <listheader label="Starting Date" width="100px"/>
                                         <listheader label="Mature Date" width="100px"/>
                                     </listhead>

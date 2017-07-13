@@ -65,8 +65,14 @@
                                         </row>
                                         <row>
                                             <label value="Card Number :"/>
+                                            <label id="lCardNumber"/>
+                                            <label value="Index No :"/>
+                                            <label id="lIdxNo"/>
+                                        </row>
+                                         <row>
+                                            <label value="Product :"/>
                                             <cell colspan="3">
-                                                <label id="lCardNumber"/>
+                                            	<label id="lProduct"/>
                                             </cell>
                                         </row>
                                     </rows>
@@ -129,7 +135,7 @@
                         </listbox>
                     </tabpanel>
                     <tabpanel>
-                        <listbox id="lbClaimHistory" width="100%" height="100%" vflex="true" style="white-space:nowrap;" >
+                        <listbox id="lbClaimHistory" width="100%" height="100%" vflex="true" style="white-space:nowrap;" mold="paging" pageSize="20">
                             <listhead sizable="true">
                                 <listheader label="Type" width="100px"/>
                                 <listheader label="Provider" width="250px"/>
@@ -141,16 +147,19 @@
                                 <listheader label="Service In" width="100px"/>
                                 <listheader label="Service Out" width="100px"/>
                                 <listheader label="Plan" width="80px"/>
+                                <listheader label="Register Date" width="100px"/>
+                                <listheader label="Claim Date" width="100px"/>
+                                <listheader label="Paid Date" width="100px"/>
                             </listhead>
                             <listfoot>
                                 <listfooter span="4" label="Total amount approved by Analyst: "/>
                                 <listfooter id="ftrApproved" align="right"/>
                             </listfoot>
                         </listbox>
-                        <paging id="pgClaimHistory" height="25px" pageSize="20"/>
+                        <!--  <paging id="pgClaimHistory" height="25px" pageSize="20"/>-->
                     </tabpanel>
                     <tabpanel>
-                        <listbox id="lbPolicyClaimHistory" width="100%" height="100%" vflex="true" style="white-space:nowrap;" onDoubleClick="spaceOwner.showPolicyClaimDetail();">
+                        <listbox id="lbPolicyClaimHistory" width="100%" height="100%" vflex="true" style="white-space:nowrap;" >
                             <listhead sizable="true">
                                 <listheader label="Type" width="100px"/>
                                 <listheader label="Name" width="200px"/>
@@ -163,6 +172,9 @@
                                 <listheader label="Service In" width="100px"/>
                                 <listheader label="Service Out" width="100px"/>
                                 <listheader label="Plan" width="80px"/>
+                                <listheader label="Register Date" width="100px"/>
+                                <listheader label="Claim Date" width="100px"/>
+                                <listheader label="Paid Date" width="100px"/>
                             </listhead>
                             <listfoot>
                                 <listfooter span="5" label="Total amount approved by Analyst: "/>
@@ -184,7 +196,7 @@
                                         <listheader label="Code" width="50px"/>
                                         <listheader label="Benefit Description"/>
                                         <listheader label="Limit" width="120px"/>
-                                        <listheader label="Description"/>
+                                       <!--  <listheader label="Description"/>  -->
                                     </listhead>
                                 </listbox>
                             </panelchildren>

@@ -3,20 +3,25 @@ package com.imc.ocisv3.controllers;
 import com.imc.ocisv3.pojos.MemberPOJO;
 import com.imc.ocisv3.pojos.PolicyPOJO;
 import com.imc.ocisv3.tools.Libs;
+
 import org.apache.poi.hssf.usermodel.HSSFSheet;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.hibernate.SQLQuery;
 import org.hibernate.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zkoss.zk.ui.Executions;
 import org.zkoss.zk.ui.event.Event;
 import org.zkoss.zk.ui.event.EventListener;
+import org.zkoss.zk.ui.event.Events;
 import org.zkoss.zul.*;
 import org.zkoss.zul.event.PagingEvent;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
@@ -33,14 +38,20 @@ public class PolicyDetailController extends Window {
     private Listbox lbPlanItems;
     private Paging pgMembers;
     private String where;
+    private Label lPlanTitle;
     private Map<String,String> clientPlanMap;
+    
+    private Object[] policyNew;
 
     public void onCreate() {
         if (!Libs.checkSession()) {
-            policy = (PolicyPOJO) getAttribute("policy");
+//            policy = (PolicyPOJO) getAttribute("policy");
+        	policyNew = (Object[]) getAttribute("policy");
             initComponents();
-            populatePlans();
-            populateMembers(0, pgMembers.getPageSize());
+            populatePlansNew();
+            populateMemberNewOcis(0, pgMembers.getPageSize());
+//            populatePlans();
+//            populateMembers(0, pgMembers.getPageSize());
         }
     }
 
@@ -50,26 +61,111 @@ public class PolicyDetailController extends Window {
         lbPlans = (Listbox) getFellow("lbPlans");
         lbPlanItems = (Listbox) getFellow("lbPlanItems");
         pgMembers = (Paging) getFellow("pgMembers");
+        lPlanTitle = (Label)getFellow("lPlanTitle");
 
         pgMembers.addEventListener("onPaging", new EventListener() {
             @Override
             public void onEvent(Event event) throws Exception {
                 PagingEvent evt = (PagingEvent) event;
-                populateMembers(evt.getActivePage() * pgMembers.getPageSize(), pgMembers.getPageSize());
+//                populateMembers(evt.getActivePage() * pgMembers.getPageSize(), pgMembers.getPageSize());
+                populateMemberNewOcis(evt.getActivePage() * pgMembers.getPageSize(), pgMembers.getPageSize());
             }
         });
 
-        String policyName = policy.getName();
+//        String policyName = policy.getName();
+        String policyName = (String)policyNew[1];
         if (Libs.config.get("demo_mode").equals("true") && Libs.getInsuranceId().equals("00051")) policyName = Libs.nn(Libs.config.get("demo_name"));
-        String subTitle = "[" + policy.getYear() + "-" + policy.getBr() + "-" + policy.getDist() + "-" + policy.getPolicy_number() + "] " + policyName;
+//        String subTitle = "[" + policy.getYear() + "-" + policy.getBr() + "-" + policy.getDist() + "-" + policy.getPolicy_number() + "] " + policyName;
+        String subTitle = "[" + (String)policyNew[0] + "] " + policyName;
         lPolicy.setValue(subTitle);
 
+        /*
         Listheader lhEmployeeId = (Listheader) getFellow("lhEmployeeId");
         if (Libs.getInsuranceId().equals("00078") || Libs.getInsuranceId().equals("00088")) {
             lhEmployeeId.setVisible(true);
         } else {
             lhEmployeeId.setVisible(false);
-        }
+        }*/
+    }
+    
+    private void populatePlansNew(){
+    	lbPlans.getItems().clear();
+    	Session s = Libs.sfOCIS.openSession();
+    	try{
+    		String qry = "Exec "+Libs.getDbName()+".dbo.S_OCISProductPlanList :polisId";
+    		SQLQuery query = s.createSQLQuery(qry);
+    		query.setInteger("polisId", (Integer)policyNew[6]);
+    		
+    		int panjangArray = 0;
+    		List<Object[]> l = query.list();
+    		if(l.size() > 0){
+    			Object[] arrobj = l.get(0);
+    			panjangArray = arrobj.length;
+    		} 
+    		
+    		for(int i=1; i < panjangArray; i++){
+    			Listheader lhdr = new Listheader();
+                lhdr.setWidth("120px");
+                lbPlans.getListhead().appendChild(lhdr);
+    		}
+    		
+    		for(Object[] o : l){
+    			Listitem item = new Listitem();
+    			for(int i=1; i < o.length; i++){
+    				final String planCode = (String)o[i];
+    				Listcell cell = new Listcell(planCode);
+    				item.appendChild(cell);
+    				
+    				cell.addEventListener(Events.ON_CLICK, new EventListener<Event>() {
+
+						@Override
+						public void onEvent(Event arg0) throws Exception {
+							lPlanTitle.setValue("Plan Items [" + planCode + "]");
+							showPlanDetail(planCode);
+							
+						}
+					});
+    			}
+    			lbPlans.appendChild(item);
+    		}
+    		
+    	}catch(Exception e){
+    		log.error("populatePlansNew", e);
+    	}finally{
+    		if(s != null && s.isOpen())s.close();
+    	}
+    }
+    
+    private void showPlanDetail(String planCode){
+    	lbPlanItems.getItems().clear();
+    	Session s = Libs.sfOCIS.openSession();
+    	try{
+    		
+    		String sql = "Select * from "+Libs.getDbName()+".dbo.F_OCISProductPlanBenefitList(:plan)";
+    		SQLQuery query = s.createSQLQuery(sql);
+    		query.setString("plan", planCode);
+    		
+    		List<Object[]> l = query.list();
+    		for(Object[] o : l){
+    			Listitem item = new Listitem();
+    			item.appendChild(new Listcell(Libs.nn(o[0])));
+    			
+    			Boolean bool = (Boolean)o[2];
+    			if(bool.booleanValue()){
+    				item.appendChild(new Listcell(" AS CHARGE"));
+    			}else{
+    				item.appendChild(Libs.createNumericListcell(((BigDecimal)o[1]).doubleValue(), "#,###.##"));
+    			}
+    			
+    			lbPlanItems.appendChild(item);
+    		}
+    		
+    	}catch(Exception e){
+    		log.error("showPlanDetail",e);
+    	}finally{
+    		if(s != null && s.isOpen())s.close();
+    	}
+    	
     }
 
     private void populatePlans() {
@@ -153,6 +249,62 @@ public class PolicyDetailController extends Window {
         } finally {
             if (s!=null && s.isOpen()) s.close();
         }
+    }
+    
+    private void populateMemberNewOcis(int offset, int limit){
+    	lbMembers.getItems().clear();
+    	Session s = Libs.sfOCIS.openSession();
+    	try{
+    		String count = "Select count(1) ";
+    		String select= "Select * ";
+    		String from = "from "+Libs.getDbName()+".dbo.F_OCISProductMember(:idPolis)";
+    		
+    		SQLQuery countQry = s.createSQLQuery(count+from);
+    		countQry.setInteger("idPolis",(Integer)policyNew[6]);
+    		
+    		Integer recordsCount = (Integer) countQry.uniqueResult();
+            pgMembers.setTotalSize(recordsCount);
+            
+            int startNumber = (((pgMembers.getActivePage()+1) * 20) - 20) + 1;
+            
+            SQLQuery query = s.createSQLQuery(select+from);
+            query.setInteger("idPolis", (Integer)policyNew[6]);
+            
+            List<Object[]> l = query.setFirstResult(offset).setMaxResults(limit).list();
+            for(Object[] o : l){
+            	Listitem item = new Listitem();
+            	item.appendChild(Libs.createNumericListcell(startNumber, "#,###.##"));
+            	item.appendChild(new Listcell(Libs.nn(o[1])));
+            	item.appendChild(new Listcell(Libs.nn(o[2])));
+            	item.appendChild(new Listcell(Libs.nn(o[3])));
+            	item.appendChild(new Listcell(Libs.nn(o[4])));
+            	item.appendChild(new Listcell(Libs.nn(o[5])));
+            	item.appendChild(new Listcell(Libs.formatDate((Date)o[6])));
+            	item.appendChild(Libs.createNumericListcell((Integer)o[7], "#,###"));
+            	
+            	item.appendChild(new Listcell(Libs.nn(o[8])));
+            	item.appendChild(new Listcell(Libs.nn(o[9])));
+            	item.appendChild(new Listcell(Libs.nn(o[10])));
+            	item.appendChild(new Listcell(Libs.nn(o[11])));
+            	item.appendChild(new Listcell(Libs.nn(o[12])));
+            	item.appendChild(new Listcell(Libs.nn(o[13])));
+            	
+            	item.appendChild(new Listcell(Libs.formatDate((Date)o[14])));
+            	item.appendChild(new Listcell(Libs.formatDate((Date)o[15])));
+            	item.appendChild(new Listcell(Libs.formatDate((Date)o[16])));
+            	
+            	lbMembers.appendChild(item);
+            	
+            	startNumber = startNumber + 1;
+            	
+            }
+    		
+    		
+    	}catch(Exception e){
+    		log.error("populateMemberNewOcis",e);
+    	}finally{
+    		if(s != null && s.isOpen()) s.close();
+    	}
     }
 
     private void populateMembers(int offset, int limit) {

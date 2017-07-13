@@ -1,0 +1,23 @@
+<window border="normal" width="600px" height="450px" style="padding:0px;" sizable="true" closable="true" position="center" contentStyle="padding:0px;"
+ apply="com.imc.ocisv3.controllers.ActiveMemberReportController">
+	<caption label="Active Member Report"/>
+            <panel width="100%" height="100%">
+                <panelchildren>
+                    <hbox pack="stretch" sclass="hboxRemoveWhiteStrips" width="100%">
+                        <toolbar height="21px">
+                        	<a label="Export" id="export" style="color:#00bbee;text-decoration :none" />
+                        	<space/>
+                        </toolbar> 
+                    </hbox>
+                   
+                    <listbox id="lb" width="100%" vflex="true" style="border-left:0px none; white-space:nowrap;">
+                        <listhead>
+                        	<listheader label="No" width="30px"/>
+                            <listheader label="Client Name" width="60%"/>
+                            <!-- <listheader label="Active Policy" /> -->
+                            <listheader label="Active Member"/>
+                        </listhead>
+                    </listbox>
+                </panelchildren>
+            </panel>
+</window>

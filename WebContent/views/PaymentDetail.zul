@@ -1,0 +1,44 @@
+<window width="900px" height="550px" border="normal" sizable="true" position="center" closable="true" contentStyle="padding:5px;" use="com.imc.ocisv3.controllers.PaymentDetailController">
+    <caption image="resources/icons/claim_detail.png"/>
+    <borderlayout width="100%" height="100%">
+        <center style="border:0px;">
+            <vlayout width="100%" height="100%" style="overflow:auto;">
+                <groupbox title="Claim Payment" closable="false">
+                    <grid width="100%" height="280px">
+                        <columns>
+                        	<column label="No" width="25px"/>
+                        	<column label="Total Payment" width="100px"/>
+                            <column label="Member Name" width="230px"/>
+                            <column label="Card Number" width="150px"/>
+                            <column label="Policy Name" width="230px"/>
+                            <column label="Policy No" width="120px"/>
+                            <column label="Index" width="40px"/>
+                            <column label="Claim Type" width="90px"/>
+                            <column label="Counter" width="80px"/>
+                            <column label="Hospital" width="200px"/>
+                        </columns>
+                        <frozen columns="2"/>
+                        <rows id="paymentRows">
+                        </rows>
+                    </grid>
+                </groupbox>
+                <hbox><label value="Total Claim : "/> <label id="totalClaim"/> </hbox>
+                <space/>
+                <groupbox title="Other Cost" closable="false">
+                    <grid width="100%">
+                        <columns>
+                            <column label="Category"/>
+                            <column label="Description"/>
+                            <column label="Amount"/>
+                        </columns>
+                        <rows id="costRows">
+                        </rows>
+                    </grid>
+                </groupbox>
+                <hbox><label value="Total Cost : "/> <label id="totalCost"/> </hbox>
+                <space/>
+                <label id="total"/>
+            </vlayout>
+        </center>
+    </borderlayout>
+</window>

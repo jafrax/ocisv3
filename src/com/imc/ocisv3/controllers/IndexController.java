@@ -1,6 +1,8 @@
 package com.imc.ocisv3.controllers;
 
 import com.imc.ocisv3.tools.Libs;
+
+import org.hibernate.SQLQuery;
 import org.hibernate.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,12 +40,15 @@ public class IndexController extends Window {
                     + "fullname, ins_id, userlv "
                     + "from ocis.dbo.cis_user "
                     + "where "
-                    + "user_id='" + tUsername.getText() + "' and "
-                    + "pass='" + tPassword.getText() + "'";
+                    + "user_id=:uId and "
+                    + "pass=:pwd";
             
             //System.out.println(qry);
-
-            List<Object[]> l = s.createSQLQuery(qry).list();
+            SQLQuery q = s.createSQLQuery(qry);
+            q.setString("uId", tUsername.getText());
+            q.setString("pwd", tPassword.getText());
+            
+            List<Object[]> l = q.list();
             if (l.size()==1) {
                 Object[] o = l.get(0);
                 
@@ -51,6 +56,7 @@ public class IndexController extends Window {
                 	Executions.getCurrent().getSession().removeAttribute("u");
                 
                 Executions.getCurrent().getSession().setAttribute("u", tUsername.getText());
+                Executions.getCurrent().getSession().setAttribute("userLevel", Integer.valueOf(Libs.nn(o[2])));
                 Libs.userLevel = Integer.valueOf(Libs.nn(o[2]));
 
                 Libs.log_login(tUsername.getText(), new Timestamp(new Date().getTime()));
@@ -62,7 +68,9 @@ public class IndexController extends Window {
                 if (Libs.userLevel==1) {
                     Executions.sendRedirect("views/ClientSelection.zul");
                 } else {
-                    Libs.getSession().setAttribute("insuranceId", Libs.nn(o[1]));
+                	Integer clientId = Libs.getNewClientId(Libs.nn(o[1]));
+//                    Libs.getSession().setAttribute("insuranceId", Libs.nn(o[1]));
+                	Libs.getSession().setAttribute("insuranceId", clientId);
                     Executions.sendRedirect("main.zul");
                 }
             } else {

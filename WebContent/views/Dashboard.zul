@@ -1,17 +1,116 @@
 <window width="100%" height="100%" contentStyle="padding:0px;" use="com.imc.ocisv3.controllers.DashboardController">
-    <borderlayout width="100%" height="100%">
+    <borderlayout width="100%" height="100%" >
         <north style="border:0px none;">
             <hlayout width="100%" style="padding: 10px;">
                 <label value="Home" style="font-size: 24pt; color: #999999;"/>
             </hlayout>
         </north>
         <center style="border:0px none;">
-            <vlayout width="100%" height="100%">
+            <vlayout width="100%" height="100%" style="overflow:auto;">
                 <vlayout width="100%" height="100%" style="padding: 10px;">
                     Claim Count from Previous 12 Months
                 </vlayout>
                 <flashchart id="chartFrequency" type="line" width="800px" height="200px"/>
+                
+                <label value="Top Ten Report :"/>
+                <tabbox id="tb">
+    				<tabs id="tabs">
+        				<tab id="A" label="Claim By Frequency" />
+        				<tab id="B" label="Claim By Value" />
+        				<tab id="C" label="Provider By Frequency" />
+        				<tab id="D" label="Provider By Value" />
+        				<tab id="E" label="Dianosis By Frequency" />
+        				<tab id="F" label="Diagnosis By Value" />
+        				<tab id="claimDistribution" label="Claim Distribution"/>
+    				</tabs>
+    				<tabpanels>
+        				<tabpanel>
+        					<vbox>
+                 				<label value="Top Ten Claim By Frequency"/>
+                				<listbox width="700px" id="frequencyList">
+            						<listhead>
+            							<listheader label="No" width="30px"/>
+            							<listheader label="Member" width="70%"/>
+            							<listheader label="Frequency"/>
+            						</listhead>
+            					</listbox>
+                	 		</vbox>
+                	 	</tabpanel>
+        				<tabpanel>
+        					<vbox>
+            	     			<label value="Top Ten Claim By Value"/>
+            	     			<listbox width="700px" id="claimList">
+            						<listhead>
+            							<listheader label="No" width="30px"/>
+            							<listheader label="Member" width="60%"/>
+            							<listheader label="Total Proposed"/>
+            							<listheader label="Total Approved"/>
+            					</listhead>
+	          					</listbox>
+            	    		</vbox>
+        				</tabpanel>
+        				<tabpanel>
+        					<vbox align="center">
+            					<label value="Top Ten Provider By Frequency"/>
+            					<listbox width="700px" id="providerFrequencyList">
+            						<listhead>
+            							<listheader label="No" width="30px"/>
+            							<listheader label="Provider Name" width="70%"/>
+            							<listheader label="Frequency"/>
+            						</listhead>
+            					</listbox>
+            				</vbox>
+        				</tabpanel>
+        				<tabpanel>
+        					<vbox>
+            					<label value="Top Ten Provider By Value"/>
+            					<listbox width="700px" id="providerClaimList">
+            						<listhead>
+            							<listheader label="No" width="30px"/>
+            							<listheader label="Provider Name" width="60%"/>
+            							<listheader label="Total Proposed"/>
+            							<listheader label="Total Approved"/>
+            						</listhead>
+            					</listbox>
+            				</vbox>
+        				</tabpanel>
+        				<tabpanel>
+        					<vbox>
+            					<label value="Top Ten Diagnosis By Frequency"/>
+            					<listbox width="700px" id="diagnosisFrequencyList">
+            						<listhead>
+            							<listheader label="No" width="30px"/>
+            							<listheader label="Diagnosis Name" width="70%"/>
+            							<listheader label="Frequency"/>
+            						</listhead>
+            					</listbox>
+            				</vbox></tabpanel>
+        				<tabpanel>
+        					<vbox>
+            					<label value="Top Ten Diagnosis By Value"/>
+            					<hbox>
+            						<listbox width="500px" id="diagnosisValueList">
+            							<listhead>
+            								<listheader label="No" width="30px"/>
+            								<listheader label="Diagnosis Name" width="60%"/>
+            								<listheader label="Proposed"/>
+            								<listheader label="Approved"/>
+            							</listhead>
+            						</listbox>
+            						<flashchart id="icdDistribution" type="column" width="550px" height="300px"/>
+            					</hbox>
+            					
+            				</vbox>
+            			</tabpanel>
+            			<tabpanel>
+            				 <flashchart id="distributionChart" type="pie" width="400px" height="250px"/>
+            			</tabpanel>
+    				</tabpanels>
+				</tabbox>
+                
+               
             </vlayout>
+           
         </center>
     </borderlayout>
 </window>

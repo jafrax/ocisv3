@@ -13,7 +13,8 @@ public class PolicyPOJO implements Serializable {
     private int policy_number;
     private String name;
 
-    public String getPolicy_string() {
+ 
+	public String getPolicy_string() {
         return getYear() + "-" + getBr() + "-" + getDist() + "-" + getPolicy_number();
     }
 

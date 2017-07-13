@@ -18,11 +18,20 @@
                         <toolbar align="end" height="21px">
                             <image src="resources/icons/browse.png"/>
                             <textbox id="tQuickSearch" onOK="spaceOwner.quickSearch();"/>
+                            <combobox id="cbStatus" readonly="true" width="100px">
+                             	<comboitem label="ACTIVE"/>
+                             	<comboitem label="CLOSED"/>
+                             	<comboitem label="CANCELED"/>
+                             	<comboitem label="ALL"/>
+                             </combobox>
+                             <a label="GO" style="color:#00bbee;text-decoration :none" onClick="spaceOwner.quickSearch();"/>
+                             <space/>
                         </toolbar>
                     </hbox>
                     <listbox id="lb" width="100%" height="100%" vflex="true" style="border-left:0px none; white-space:nowrap;" onSelect="spaceOwner.lbSelected();" onDoubleClick="spaceOwner.showInHospitalMonitoringDetail();">
                         <listhead>
-                            <listheader label="Guarantee Letter Number" width="110px"/>
+                            <listheader label="Guarantee Letter Number" width="120px"/>
+                            <listheader label="GL Date" width="110px"/>
                             <listheader label="Policy Number" width="100px"/>
                             <listheader label="Card Number" width="130px"/>
                             <listheader label="Index" width="80px"/>

@@ -13,6 +13,8 @@
                         <toolbar height="21px">
                         	<a label="Export To XLS" style="color:#00bbee;text-decoration :none" onClick="spaceOwner.exportToXls();"/>
                         	<space/>
+                        	<a label="Export With Detail" style="color:#00bbee;text-decoration :none" onClick="spaceOwner.exportWithDetail();"/>
+                        	<space/>
                         	<!-- <a label="Member Detail" style="color:#00bbee;text-decoration :none" onClick="spaceOwner.showMemberDetail();"/>
                         	<space/> -->
                         	<a label="Refresh" style="color:#00bbee;text-decoration :none" onClick="spaceOwner.refresh();"/>
@@ -32,6 +34,8 @@
                              	<comboitem label="Polis"/>
                              	<comboitem label="Product"/>
                              	<comboitem label="Claim Type"/>
+                             	<comboitem label="Index"/>
+                             	<comboitem label="Payment Date"/>
                              </combobox>
                               <combobox id="cbClaimType" readonly="true" width="100px">
                              	<comboitem label="INPATIENT"/>
@@ -41,22 +45,24 @@
                              <textbox id="tQuickSearch" width="100px"/>
                              <combobox id="cbPolicy" readonly="true" width="100px"/>
                              <!-- <combobox id="cbPolicy" onSelect="spaceOwner.policySelected();" readonly="true" width="100px"/>  -->
-                             <label value="Claim Date From : "/>
+                             <label value="Claim Date From : " id="lblDate"/>
                              <datebox format="MM-dd-yyyy" id="startDate" width="90px"/>
                              <label value="To : "/>
                              <datebox format="MM-dd-yyyy" id="endDate" width="90px"/>
                              <a label="GO" style="color:#00bbee;text-decoration :none" onClick="spaceOwner.viewClaimHistory();"/>
+                             <space/>
                         </toolbar>
                     </hbox>
                     <listbox id="lb" width="100%" height="100%" vflex="true" style="border-left:0px none; white-space:nowrap;">
                         <listhead sizable="true">
                             <listheader label="Claim Number" width="130px"/>
                             <listheader label="Claim Voucher" width="130px"/>
+                            <listheader label="Hospital Invoice No" width="130px"/>
                             <listheader label="Policy Number" width="120px"/>
                             <listheader label="Product Name" width="130px"/>
                             <listheader label="Index" width="70px"/>
                             <listheader label="Client ID" width="70px"/>
-                            <listheader id="lhEmployeeId" label="Employee ID" width="70px"/>
+                            <!-- <listheader id="lhEmployeeId" label="Employee ID" width="70px"/> -->
                             <listheader label="Name" width="200px"/>
                             <listheader label="Status" width="100px"/>
                             <listheader label="Claim Type" width="60px"/>
@@ -67,8 +73,10 @@
                             <listheader label="Service In" width="90px"/>
                             <listheader label="Service Out" width="90px"/>
                             <listheader label="Payment Date" width="90px"/>
+                            <listheader label="Register Date" width="90px"/>
+                            <listheader label="Claim Date" width="90px"/>
                         </listhead>
-                        <frozen columns="2"/>
+                        <frozen columns="3"/>
                     </listbox>
                     <paging id="pg" height="25px" pageSize="20"/>
                 </panelchildren>

@@ -5,6 +5,7 @@ import com.imc.ocisv3.pojos.ClaimPOJO;
 import com.imc.ocisv3.pojos.MemberPOJO;
 import com.imc.ocisv3.pojos.PolicyPOJO;
 import com.imc.ocisv3.tools.Libs;
+
 import org.hibernate.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +16,7 @@ import org.zkoss.zk.ui.event.Events;
 import org.zkoss.zul.*;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -51,13 +53,20 @@ public class MemberDetailController extends Window {
     private double policyUsage = 0;
     private double edcUsage = 0;
     private Map<String,String> clientPlanMap;
+    
+    private BigInteger memberId;
 
     public void onCreate() {
         if (!Libs.checkSession()) {
             policy = (PolicyPOJO) getAttribute("policy");
             member = (MemberPOJO) getAttribute("member");
+            
+            memberId = (BigInteger) getAttribute("memberId");
+            
             initComponents();
-            populate();
+//            populate();
+            populateNew();
+            
         }
     }
 
@@ -69,7 +78,7 @@ public class MemberDetailController extends Window {
         lbPlanItems = (Listbox) getFellow("lbPlanItems");
         lbUpdation = (Listbox) getFellow("lbUpdation");
         lbOngoingClaim = (Listbox) getFellow("lbOngoingClaim");
-        pgClaimHistory = (Paging) getFellow("pgClaimHistory");
+//        pgClaimHistory = (Paging) getFellow("pgClaimHistory");
         tabRelatives = (Tab) getFellow("tabRelatives");
         tabOngoingClaim = (Tab) getFellow("tabOngoingClaim");
         tabClaimHistory = (Tab) getFellow("tabClaimHistory");
@@ -77,6 +86,17 @@ public class MemberDetailController extends Window {
         ftrApproved = (Listfooter) getFellow("ftrApproved");
         ftrPolicyApproved = (Listfooter) getFellow("ftrPolicyApproved");
         cbPlans = (Combobox) getFellow("cbPlans");
+    }
+    
+    private void populateNew(){
+    	populateInformationNew();
+    	populatePlanRegisteredNew();
+    	populateRelativeNew();
+    	populateMemberClaimHistory();
+    	populateFamilyClaimHistory();
+    	displayPlanItemsNew();
+    	populateOngoingClaimNew();
+    	
     }
 
     private void populate() {
@@ -89,13 +109,57 @@ public class MemberDetailController extends Window {
         getCaption().setLabel("Member Detail [" + member.getCard_number() + " - " + member.getName() + "]");
         populateInformation();
         populateOngoingClaim();
-        populateClaimHistory(0, pgClaimHistory.getPageSize());
+        populateClaimHistory(0, 20);
         populatePlanRegistered();
         populateRelatives();
         populateUpdation();
         populateSummary();
     }
+    
+    private void populateInformationNew(){
+    	Session s = Libs.sfOCIS.openSession();
+    	try{
+    		String sql = "Select * from "+Libs.getDbName()+".dbo.F_OCISMemberInfoHd("+memberId.intValue()+")";
+    		
+    		List<Object[]> l = s.createSQLQuery(sql).list();
+    		if(l.size() > 0){
+    			Object[] o = l.get(0);
+    			
+    			 ((Label) getFellow("lName")).setValue(Libs.nn(o[0]));
+    		     ((Label) getFellow("lDOB")).setValue(Libs.formatDate((Date)o[2]));
+    		     
+    		     int ageDays = 0;
+    		     ageDays = Libs.getDiffDays((Date)o[2], new Date());
+    		     
+    		     Label lAge = (Label) getFellow("lAge");
+    		     lAge.setStyle("text-align:right;");
+    		     lAge.setValue("(" + (ageDays / 365) + ")");
+    		     
+    		     
+    		     ((Label) getFellow("lSex")).setValue(Libs.nn(o[1]));
+    		     ((Label) getFellow("lStartingDate")).setValue(Libs.formatDate((Date)o[6]));
+    		     ((Label) getFellow("lMatureDate")).setValue(Libs.formatDate((Date)o[7]));
+    		     ((Label) getFellow("lClientPolicyNumber")).setValue(Libs.nn(o[4]));
+    		     ((Label) getFellow("lClientIDNumber")).setValue(Libs.nn(o[5]));
+    		     ((Label) getFellow("lCardNumber")).setValue(Libs.nn(o[8]));
+    		     ((Label) getFellow("lMaritalStatus")).setValue(Libs.nn(o[3]));
+    		     ((Label) getFellow("lIdxNo")).setValue(Libs.nn(o[9]));
+    		     ((Label) getFellow("lProduct")).setValue(Libs.nn(o[10]));
+    		     
+    		     getCaption().setLabel("Member Detail [" + Libs.nn(o[8]) + " - " + Libs.nn(o[0]) + "]");
 
+    		}
+    		
+    		
+    		
+    	}catch(Exception e){
+    		log.error("populateInformationNew",e);
+    		
+    	}finally{
+    		if(s != null && s.isOpen()) s.close();
+    	}
+    	
+    }
     private void populateInformation() {
         int ageDays = 0;
         try {
@@ -118,6 +182,79 @@ public class MemberDetailController extends Window {
         ((Label) getFellow("lClientIDNumber")).setValue(member.getClient_id_number());
         ((Label) getFellow("lCardNumber")).setValue(member.getCard_number());
         ((Label) getFellow("lMaritalStatus")).setValue(member.getMarital_status());
+        ((Label) getFellow("lIdxNo")).setValue(member.getIdx() +" "+ member.getSeq());
+        ((Label) getFellow("lProduct")).setValue(policy.getPolicy_string() +" - "+ policy.getName());
+    }
+    
+    private void populateRelativeNew(){
+    	lbRelatives.getItems().clear();
+    	tabRelatives.setDisabled(true);
+    	
+    	Session s = Libs.sfOCIS.openSession();
+    	try{
+    		String qry = "Select * from "+Libs.getDbName()+".dbo.F_OCISMemberInfoRelatives("+memberId.intValue()+")";
+    		List<Object[]> l = s.createSQLQuery(qry).list();
+    		
+    		if(l.size() > 0) tabRelatives.setDisabled(false);
+    		
+    		for(Object[] o : l){
+    			Listitem item = new Listitem();
+    			
+    			Listcell cell = new Listcell(Libs.nn(o[0]));
+    			item.appendChild(cell);
+    			
+    			if(Libs.nn(o[1]).trim().equalsIgnoreCase("A")){
+    				cell = new Listcell("ACTIVE");
+    				cell.setStyle("color:#00FF00");
+    			}else{
+    				cell = new Listcell("INACTIVE");
+    				cell.setStyle("color:#FF0000");
+    			}
+    			item.appendChild(cell);
+    			
+    			cell = new Listcell(Libs.nn(o[2]));
+    			item.appendChild(cell);
+    			
+    			cell = new Listcell(Libs.formatDate((Date)o[3]));
+    			item.appendChild(cell);
+    			
+    			cell = new Listcell(Libs.nn(o[4]));
+    			item.appendChild(cell);
+    			
+    			cell = new Listcell(Libs.nn(o[5]));
+    			item.appendChild(cell);
+    			
+    			cell = new Listcell(Libs.nn(o[6]));
+    			item.appendChild(cell);
+    			
+    			cell = new Listcell(Libs.nn(o[7]));
+    			item.appendChild(cell);
+    			
+    			cell = new Listcell(Libs.nn(o[8]));
+    			item.appendChild(cell);
+    			
+    			cell = new Listcell(Libs.nn(o[9]));
+    			item.appendChild(cell);
+    			
+    			cell = new Listcell(Libs.nn(o[10]));
+    			item.appendChild(cell);
+    			
+    			
+    			cell = new Listcell(Libs.formatDate((Date)o[11]));
+    			item.appendChild(cell);
+    			
+    			cell = new Listcell(Libs.formatDate((Date)o[12]));
+    			item.appendChild(cell);
+    			
+    			lbRelatives.appendChild(item);
+    		}
+    		
+    	}catch(Exception e){
+    		log.error("populateRelativeNew", e);
+    	}finally{
+    		if(s != null && s.isOpen())s.close();
+    	}
+    	
     }
 
     private void populateRelatives() {
@@ -249,6 +386,106 @@ public class MemberDetailController extends Window {
         }
 
     }
+    
+    private void populateFamilyClaimHistory(){
+    	lbPolicyClaimHistory.getItems().clear();
+    	tabPolicyClaimHistory.setDisabled(true);
+    	
+    	Session s = Libs.sfOCIS.openSession();
+    	try{
+    		String query = "Select * from "+Libs.getDbName()+".dbo.F_OCISMemberInfoClaimFam("+memberId.intValue()+")";
+    		
+    		System.out.println(query);
+    		
+    		List<Object[]> l = s.createSQLQuery(query).list();
+    		if(l.size() > 0) tabPolicyClaimHistory.setDisabled(false);
+    		
+    		for(Object[] o : l){
+    			Listitem item = new Listitem();
+    			
+    			Listcell cell = new Listcell(Libs.nn(o[0]));
+    			item.appendChild(cell);
+    			
+    			cell = new Listcell(Libs.nn(o[1]));
+    			item.appendChild(cell);
+    			
+    			cell = new Listcell(Libs.nn(o[2]));
+    			item.appendChild(cell);
+    			
+    			cell = new Listcell(Libs.nn(o[3]));
+    			item.appendChild(cell);
+    			
+    			cell = new Listcell(Libs.nn(o[4]));
+    			item.appendChild(cell);
+    			
+    			item.appendChild(Libs.createNumericListcell(Double.valueOf(Libs.nn(o[5])), "#,###.##"));
+                item.appendChild(Libs.createNumericListcell(Double.valueOf(Libs.nn(o[6])), "#,###.##"));
+                item.appendChild(Libs.createNumericListcell(Double.valueOf(Libs.nn(o[7])).intValue(), "#,###"));
+                
+                item.appendChild(new Listcell(Libs.formatDate((Date)o[8])));
+                item.appendChild(new Listcell(Libs.formatDate((Date)o[9])));
+                item.appendChild(new Listcell(Libs.nn(o[10])));
+                item.appendChild(new Listcell(Libs.formatDate((Date)o[11])));
+                item.appendChild(new Listcell(Libs.formatDate((Date)o[12])));
+                item.appendChild(new Listcell(Libs.formatDate((Date)o[13])));
+                
+                lbPolicyClaimHistory.appendChild(item);
+
+    		}
+    	}catch(Exception e){
+    		log.error("populateFamilyClaimHistory", e);
+    	}finally{
+    		if(s != null && s.isOpen())s.close();
+    	}
+    }
+    
+    private void populateMemberClaimHistory(){
+    	lbClaimHistory.getItems().clear();
+    	tabClaimHistory.setDisabled(true);
+    	Session s = Libs.sfOCIS.openSession();
+    	try{
+    		String qry = "Select * from "+Libs.getDbName()+".dbo.F_OCISMemberInfoClaim("+memberId.intValue()+")";
+    		
+    		
+    		List<Object[]> l = s.createSQLQuery(qry).list();
+    		
+    		if(l.size() > 0)tabClaimHistory.setDisabled(false);
+    		
+    		for(Object[] o : l){
+    			Listitem item = new Listitem();
+    			
+    			Listcell cell = new Listcell(Libs.nn(o[0]));
+    			item.appendChild(cell);
+    			
+    			cell = new Listcell(Libs.nn(o[1]));
+    			item.appendChild(cell);
+    			
+    			cell = new Listcell(Libs.nn(o[2]));
+    			item.appendChild(cell);
+    			
+    			cell = new Listcell(Libs.nn(o[3]));
+    			item.appendChild(cell);
+    			
+    			item.appendChild(Libs.createNumericListcell(Double.valueOf(Libs.nn(o[4])), "#,###.##"));
+                item.appendChild(Libs.createNumericListcell(Double.valueOf(Libs.nn(o[5])), "#,###.##"));
+                item.appendChild(Libs.createNumericListcell(Double.valueOf(Libs.nn(o[6])).intValue(), "#,###"));
+                
+                item.appendChild(new Listcell(Libs.formatDate((Date)o[7])));
+                item.appendChild(new Listcell(Libs.formatDate((Date)o[8])));
+                item.appendChild(new Listcell(Libs.nn(o[9])));
+                item.appendChild(new Listcell(Libs.formatDate((Date)o[10])));
+                item.appendChild(new Listcell(Libs.formatDate((Date)o[11])));
+                item.appendChild(new Listcell(Libs.formatDate((Date)o[12])));
+    			
+    			
+    			lbClaimHistory.appendChild(item);
+    		}
+    	}catch(Exception e){
+    		log.error("populateMemberClaimHistory", e);
+    	}finally{
+    		if(s != null && s.isOpen()) s.close();
+    	}
+    }
 
     private void populateClaimHistory(int offset, int limit) {
         lbClaimHistory.getItems().clear();
@@ -270,7 +507,10 @@ public class MemberDetailController extends Window {
                     + "c.hdt1name, "
                     + "a.hclmidxno, "
                     + "d.hmem2data1, "
-                    + "e.hempcnpol, e.hempcnid " // 20
+                    + "e.hempcnpol, e.hempcnid, " // 20
+                    + "convert(varchar,a.hclmcdatey)+'-'+convert(varchar,a.hclmcdatem)+'-'+convert(varchar,a.hclmcdated) as cdate, "
+                    + "convert(varchar,a.hclmpdatey)+'-'+convert(varchar,a.hclmpdatem)+'-'+convert(varchar,a.hclmpdated) as pdate, "
+                    + "a.hclmnhoscd "
                     + "from idnhltpf.dbo.hltclm a "
                     + "inner join idnhltpf.dbo.hltpro b on b.hpronomor=a.hclmnhoscd "
                     + "inner join idnhltpf.dbo.hltdt1 c on c.hdt1yy=a.hclmyy and c.hdt1pono=a.hclmpono and c.hdt1idxno=a.hclmidxno and c.hdt1seqno=a.hclmseqno and c.hdt1ctr=0 "
@@ -290,8 +530,10 @@ public class MemberDetailController extends Window {
 
             int memberClaimCount = 0;
             int policyClaimCount = 0;
+            
 
-            List<Object[]> l = s.createSQLQuery(qry).setFirstResult(offset).setMaxResults(limit).list();
+//            List<Object[]> l = s.createSQLQuery(qry).setFirstResult(offset).setMaxResults(limit).list();
+            List<Object[]> l = s.createSQLQuery(qry).list();
             for (Object[] o : l) {
                 policyClaimCount++;
 
@@ -327,7 +569,13 @@ public class MemberDetailController extends Window {
                     Listitem li = new Listitem();
 
                     li.appendChild(new Listcell(Libs.getClaimType(Libs.nn(o[0]))));
-                    li.appendChild(new Listcell(provider));
+                    
+                    A prov = new A(provider);
+                    prov.setStyle("color:#00bbee;text-decoration:none");
+                    Listcell lc = new Listcell();
+                    lc.appendChild(prov);
+                    
+                    li.appendChild(lc);
                     li.appendChild(new Listcell(diagnosis));
                     li.appendChild(new Listcell(Libs.getICDByCode(diagnosis)));
                     li.appendChild(Libs.createNumericListcell(Double.valueOf(Libs.nn(o[14])), "#,###.##"));
@@ -336,6 +584,20 @@ public class MemberDetailController extends Window {
                     li.appendChild(new Listcell((serviceIn.startsWith("0")) ? "" : serviceIn));
                     li.appendChild(new Listcell((serviceOut.startsWith("0")) ? "" : serviceOut));
                     li.appendChild(new Listcell(planString));
+                    
+                    //paramater hid number, procode
+                    String hid = Libs.nn(o[12]);
+                    String[] result = Libs.getHospitalInvoice(hid.substring(4, hid.length()), o[24]);
+                    if(result != null){
+                    	li.appendChild(new Listcell(result[1]));
+                    }else{
+                    	li.appendChild(new Listcell(""));
+                    }
+                    
+                    li.appendChild(new Listcell(Libs.nn(o[22])));
+                    
+                    if(!Libs.nn(o[23]).equalsIgnoreCase("0-0-0")) li.appendChild(new Listcell(Libs.nn(o[23])));
+                    else li.appendChild(new Listcell("-"));
                     
                     
                     
@@ -349,13 +611,12 @@ public class MemberDetailController extends Window {
                     li.setValue(claimPOJO);
                     lbClaimHistory.appendChild(li);
                     
-                    lbClaimHistory.addEventListener(Events.ON_SELECT, new EventListener<Event>() {
+                    prov.addEventListener(Events.ON_CLICK, new EventListener<Event>() {
 
 						@Override
 						public void onEvent(Event arg0) throws Exception {
 							// TODO Auto-generated method stub
 							showClaimDetail(claimPOJO);
-							lbClaimHistory.clearSelection();
 						}
 					});
                 }
@@ -366,7 +627,13 @@ public class MemberDetailController extends Window {
                 policyUsage += Double.valueOf(Libs.nn(o[15]));
 
                 li.appendChild(new Listcell(Libs.getClaimType(Libs.nn(o[0]))));
-                li.appendChild(new Listcell(Libs.nn(o[17]).trim()));
+                
+                A memberName = new A(Libs.nn(o[17]).trim());
+                memberName.setStyle("color:#00bbee;text-decoration:none");
+                Listcell lc = new Listcell();
+                lc.appendChild(memberName);
+                
+                li.appendChild(lc);
                 li.appendChild(new Listcell(Libs.nn(o[1]).trim()));
                 li.appendChild(new Listcell(diagnosis));
                 li.appendChild(new Listcell(Libs.getICDByCode(diagnosis)));
@@ -376,16 +643,39 @@ public class MemberDetailController extends Window {
                 li.appendChild(new Listcell((serviceIn.startsWith("0")) ? "" : serviceIn));
                 li.appendChild(new Listcell((serviceOut.startsWith("0")) ? "" : serviceOut));
                 li.appendChild(new Listcell(planString));
+                
+              //paramater hid number, procode
+                String hid = Libs.nn(o[12]);
+                String[] result = Libs.getHospitalInvoice(hid.substring(4, hid.length()), o[24]);
+                if(result != null){
+                	li.appendChild(new Listcell(result[1]));
+                }else{
+                	li.appendChild(new Listcell(""));
+                }
+                
+                li.appendChild(new Listcell(Libs.nn(o[22])));
+                
+                if(!Libs.nn(o[23]).equalsIgnoreCase("0-0-0")) li.appendChild(new Listcell(Libs.nn(o[23])));
+                else li.appendChild(new Listcell("-"));
 
-                ClaimPOJO claimPOJO = new ClaimPOJO();
+                final  ClaimPOJO claimPOJO = new ClaimPOJO();
                 claimPOJO.setClaim_number(Libs.nn(o[12]).trim());
                 claimPOJO.setPolicy_number(policy.getYear() + "-" + policy.getBr() + "-" + policy.getDist() + "-" + policy.getPolicy_number());
                 claimPOJO.setIndex(Libs.nn(o[18]) + "-" + Libs.nn(o[16]));
                 claimPOJO.setClaim_count(Integer.valueOf(Libs.nn(o[13])));
+                claimPOJO.setPolicy(policy);
 
                 li.setValue(claimPOJO);
 
                 lbPolicyClaimHistory.appendChild(li);
+                
+                memberName.addEventListener(Events.ON_CLICK, new EventListener<Event>() {
+
+					@Override
+					public void onEvent(Event arg0) throws Exception {
+						showClaimDetail(claimPOJO);
+					}
+				});
             }
 
             if (memberClaimCount>0) tabClaimHistory.setDisabled(false);
@@ -398,6 +688,41 @@ public class MemberDetailController extends Window {
         } finally {
             if (s!=null && s.isOpen()) s.close();
         }
+    }
+    
+    private void populateOngoingClaimNew(){
+    	lbOngoingClaim.getItems().clear();
+    	
+    	Session s = Libs.sfOCIS.openSession();
+    	try{
+    		 String qry = "Select * from "+Libs.getDbName()+".dbo.F_OCISMemberInfoOnGoingClaim("+memberId.intValue()+")";
+    		 
+    		 List<Object[]> l = s.createSQLQuery(qry).list();
+    		 for(Object[] o : l){
+    			 Listitem li = new Listitem();
+                 li.appendChild(new Listcell(Libs.nn(o[0])));
+                 li.appendChild(new Listcell(Libs.nn(o[1])));
+                 li.appendChild(new Listcell(Libs.nn(o[2])));
+                 li.appendChild(new Listcell(Libs.nn(o[3])));
+                 li.appendChild(Libs.createNumericListcell(Double.valueOf(Libs.nn(o[4])), "#,###.##"));
+                 li.appendChild(Libs.createNumericListcell(Double.valueOf(Libs.nn(o[5])), "#,###.##"));
+                 li.appendChild(new Listcell(Libs.nn(o[6])));
+                 li.appendChild(new Listcell(Libs.formatDate((Date)o[7])));
+                 li.appendChild(new Listcell(Libs.formatDate((Date)o[8])));
+                 li.appendChild(new Listcell(Libs.nn(o[9])));
+                 li.appendChild(new Listcell(Libs.nn(o[10])));
+                 lbOngoingClaim.appendChild(li);
+        
+    		 }
+    		
+    		 
+    	}catch(Exception e){
+    		log.error("populateOngoingClaimNew", e);
+    	}finally{
+    		if(s != null && s.isOpen()) s.close();
+    	}
+    	
+    	
     }
 
     private void populateOngoingClaim() {
@@ -528,6 +853,8 @@ public class MemberDetailController extends Window {
             s.close();
         }
     }
+    
+   
 
     private void populateOngoingClaimHM() {
         Session s = Libs.sfDB.openSession();
@@ -583,13 +910,54 @@ public class MemberDetailController extends Window {
             s.close();
         }
     }
+    
+    private void populatePlanRegisteredNew(){
+    	lbPlan.getItems().clear();
+    	
+    	Session s = Libs.sfOCIS.openSession();
+    	try{
+    		String qry = "Select * from "+Libs.getDbName()+".dbo.F_OCISMemberInfoDt("+memberId.intValue()+")";
+    		List<Object[]> l = s.createSQLQuery(qry).list();
+    		for(Object[] o : l){
+    			Listitem item = new Listitem();
+    			
+    			Listcell cell = new Listcell(Libs.nn(o[0]));
+    			item.appendChild(cell);
+    			
+    			cell = new Listcell(Libs.nn(o[1]));
+    			item.appendChild(cell);
+    			
+    			cell = new Listcell(Libs.formatDate((Date)o[2]));
+    			item.appendChild(cell);
+    			
+    			cell = new Listcell(Libs.nn(o[3]));
+    			item.appendChild(cell);
+    			
+    			cell = new Listcell(Libs.nn(o[4]));
+    			item.appendChild(cell);
+    			
+    			item.appendChild(Libs.createNumericListcell(((BigDecimal)o[5]).doubleValue(), "#,###.00"));
+    		    item.appendChild(Libs.createNumericListcell(((BigDecimal)o[6]).doubleValue(), "#,###.00"));
+    		    
+    		    lbPlan.appendChild(item);
+    			
+    		}
+    	}catch(Exception e){
+    		log.error("populatePlanRegisteredNew", e);
+    	}finally{
+    		if(s != null && s.isOpen()) s.close();
+    	}
+    }
 
     private void populatePlanRegistered() {
         lbPlan.getItems().clear();
+        
+        boolean isFamilyLimit = false;
 
         if (!member.getIp().isEmpty()) {
             cbPlans.appendItem(member.getIp());
-            lbPlan.appendChild(createPlanLine("INPATIENT", member.getIp(), member.getPlan_entry_date().get(0), member.getPlan_exit_date().get(0)));
+            isFamilyLimit = Libs.isFamilyLimit(member.getPolicy(), "I");
+            lbPlan.appendChild(createPlanLine("INPATIENT", member.getIp(), member.getPlan_entry_date().get(0), member.getPlan_exit_date().get(0), isFamilyLimit));
 
             BenefitPOJO benefitPOJO = Libs.getBenefit(policy.getYear() + "-" + policy.getBr() + "-" + policy.getDist() + "-" + policy.getPolicy_number(), member.getIp());
             familyLimit = benefitPOJO.getLimit();
@@ -600,22 +968,26 @@ public class MemberDetailController extends Window {
 
         if (!member.getOp().isEmpty()) {
             cbPlans.appendItem(member.getOp());
-            lbPlan.appendChild(createPlanLine("OUTPATIENT", member.getOp(), member.getPlan_entry_date().get(1), member.getPlan_exit_date().get(1)));
+            isFamilyLimit = Libs.isFamilyLimit(member.getPolicy(), "O");
+            lbPlan.appendChild(createPlanLine("OUTPATIENT", member.getOp(), member.getPlan_entry_date().get(1), member.getPlan_exit_date().get(1), isFamilyLimit));
         }
 
         if (!member.getMaternity().isEmpty()) {
             cbPlans.appendItem(member.getMaternity());
-            lbPlan.appendChild(createPlanLine("MATERNITY", member.getMaternity(), member.getPlan_entry_date().get(2), member.getPlan_exit_date().get(2)));
+            isFamilyLimit = Libs.isFamilyLimit(member.getPolicy(), "R");
+            lbPlan.appendChild(createPlanLine("MATERNITY", member.getMaternity(), member.getPlan_entry_date().get(2), member.getPlan_exit_date().get(2), isFamilyLimit));
         }
 
         if (!member.getDental().isEmpty()) {
             cbPlans.appendItem(member.getDental());
-            lbPlan.appendChild(createPlanLine("DENTAL", member.getDental(), member.getPlan_entry_date().get(3), member.getPlan_exit_date().get(3)));
+            isFamilyLimit = Libs.isFamilyLimit(member.getPolicy(), "D");
+            lbPlan.appendChild(createPlanLine("DENTAL", member.getDental(), member.getPlan_entry_date().get(3), member.getPlan_exit_date().get(3), isFamilyLimit));
         }
 
         if (!member.getGlasses().isEmpty()) {
             cbPlans.appendItem(member.getGlasses());
-            lbPlan.appendChild(createPlanLine("GLASSES", member.getGlasses(), member.getPlan_entry_date().get(4), member.getPlan_exit_date().get(4)));
+            isFamilyLimit = Libs.isFamilyLimit(member.getPolicy(), "G");
+            lbPlan.appendChild(createPlanLine("GLASSES", member.getGlasses(), member.getPlan_entry_date().get(4), member.getPlan_exit_date().get(4), isFamilyLimit));
         }
 
         cbPlans.setSelectedIndex(0);
@@ -638,46 +1010,88 @@ public class MemberDetailController extends Window {
         }
     }
 
-    private Listitem createPlanLine(String type, String plan, String entryDate, String exitDate) {
+    private Listitem createPlanLine(String type, String plan, String entryDate, String exitDate, boolean isFamilyLimit) {
         int planClaimCount = 0;
         double limit = 0;
         double planUsage = 0;
 
         Session s = Libs.sfDB.openSession();
+        
+        
         try {
+        	String ctype = "";
+        	if(type.equalsIgnoreCase("OUTPATIENT"))
+        		ctype = "O";
+        	else if(type.equalsIgnoreCase("INPATIENT"))
+        		ctype = "I";
+        	else if(type.equalsIgnoreCase("DENTAL"))
+        		ctype = "D";
+        	else if(type.equalsIgnoreCase("MATERNITY"))
+        		ctype = "R";
+        	else if(type.equalsIgnoreCase("GLASSES"))
+        		ctype = "G";
+        		
+        	
             String q = "select count(*), "
                     + "sum(" + Libs.runningFields("hclmaamt", 1, 30, true) + ") as approved "
                     + "from idnhltpf.dbo.hltclm "
                     + "where "
                     + "hclmyy=" + policy.getYear() + " and hclmpono=" + policy.getPolicy_number() + " "
-                    + "and hclmidxno=" + member.getIdx() + " and hclmseqno='" + member.getSeq() + "' "
-                    + "and (hclmpcode1 + hclmpcode2)='" + plan + "' "
+                    + "and hclmidxno=" + member.getIdx() + " "; 
+                    
+                    if(!isFamilyLimit){
+                    	q = q + " and hclmseqno='" + member.getSeq() + "' ";
+                    }
+                    	
+                    		
+                    q = q + "and hclmtclaim='"+ctype+"' "
+                    //+ "and (hclmpcode1 + hclmpcode2)='" + plan + "' "
                     + "and hclmrecid<>'C' ";
 
             Object[] o = (Object[]) s.createSQLQuery(q).uniqueResult();
+            
+//            System.out.println("query banyaknya claim : "+q);
             planClaimCount = (Integer) o[0];
             if (o[1]!=null) planUsage = ((BigDecimal) o[1]).doubleValue();
-
-            q = "select hbftlmtamt "
-                    + "from idnhltpf.dbo.hltbft "
+            
+            q = "select hgajilmt "
+                    + "from idnhltpf.dbo.hltgajisuh "
                     + "where "
-                    + "hbftyy=" + policy.getYear() + " "
-                    + "and hbftpono=" + policy.getPolicy_number() + " "
-                    + "and hbftcode='" + plan + "' ";
+                    + "hgajiid='"+ctype+"' "
+                    + "and hgajiyy=" + policy.getYear() + " "
+                    + "and hgajipono=" + policy.getPolicy_number() + " "
+                    + "and hgajiidxno=" + member.getIdx() + " "
+                    + "and hgajiseqno='" + member.getSeq() + "' ";
+            
+//            System.out.println("ini query limit gaji " +q);
 
-            limit = ((BigDecimal) s.createSQLQuery(q).uniqueResult()).doubleValue();
+            BigDecimal gaji = (BigDecimal) s.createSQLQuery(q).uniqueResult();
+            if(gaji != null) limit = gaji.doubleValue();
+            else{
+            	q = "select hbftlmtamt "
+                        + "from idnhltpf.dbo.hltbft "
+                        + "where "
+                        + "hbftyy=" + policy.getYear() + " "
+                        + "and hbftpono=" + policy.getPolicy_number() + " "
+                        + "and hbftcode='" + plan + "' ";
 
+                limit = ((BigDecimal) s.createSQLQuery(q).uniqueResult()).doubleValue();
+            }
+
+            
+            /*
             if (limit==0) {
                 q = "select hgajilmt "
                         + "from idnhltpf.dbo.hltgajisuh "
                         + "where "
-                        + "hgajiyy=" + policy.getYear() + " "
+                        + "hgajiid='"+ctype+"' "
+                        + "and hgajiyy=" + policy.getYear() + " "
                         + "and hgajipono=" + policy.getPolicy_number() + " "
                         + "and hgajiidxno=" + member.getIdx() + " "
                         + "and hgajiseqno='" + member.getSeq() + "' ";
 
-                limit = ((BigDecimal) s.createSQLQuery(q).uniqueResult()).doubleValue();
-            }
+                limit = ((BigDecimal) s.createSQLQuery(q).uniqueResult()).doubleValue(); 
+            }*/
         } catch (Exception ex) {
             log.error("createPlanLine", ex);
         } finally {
@@ -725,6 +1139,34 @@ public class MemberDetailController extends Window {
         Window w = (Window) Executions.createComponents("views/ClaimDetail.zul", this, null);
         w.setAttribute("claim", lbPolicyClaimHistory.getSelectedItem().getValue());
         w.doModal();
+    }
+    
+    private void displayPlanItemsNew(){
+    	lbPlanItems.getItems().clear();
+    	Session s = Libs.sfOCIS.openSession();
+    	try{
+    		String query = "Select * from "+Libs.getDbName()+".dbo.F_OCISMemberInfoBenefit("+memberId.intValue()+")";
+    		List<Object[]> l = s.createSQLQuery(query).list();
+    		for(Object[] o : l){
+    			
+    			Listitem li = new Listitem();
+                li.setValue(o);
+
+                li.appendChild(new Listcell(Libs.nn(o[0]).trim()));
+                li.appendChild(new Listcell(Libs.nn(o[1]).trim()));
+                if(Double.valueOf(Libs.nn(o[2])).doubleValue() > 0)
+                	li.appendChild(Libs.createNumericListcell(Double.valueOf(Libs.nn(o[2])), "#,###.##"));
+                else li.appendChild(new Listcell("AS CHARGE"));
+                
+                lbPlanItems.appendChild(li);
+    			
+    		}
+    		
+    	}catch(Exception e){
+    		log.error("displayPlanItemsNew", e);
+    	}finally{
+    		if(s != null && s.isOpen()) s.close();
+    	}
     }
 
     private void displayPlanItems(String plan) {

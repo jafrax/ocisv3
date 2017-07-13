@@ -66,14 +66,19 @@ public class InHospitalMonitoringDetailController extends Window {
         Label lRoomPrice = (Label) getFellow("lRoomPrice");
         lRoomPrice.setStyle("text-align:right;");
         lRoomPrice.setValue(new DecimalFormat("#,###.##").format(Double.valueOf(Libs.nn(ihm[17]))));
+        
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        String tglKeluar = sdf.format((Date)ihm[24]);
+        
+        System.out.println("ini tanggal keluar dodol : "+tglKeluar);
 
         Label lStatus = (Label) getFellow("lStatus");
         if (Libs.nn(ihm[11]).trim().equals("0")) {
             lStatus.setValue("CANCELED");
-        } else if (Libs.nn(ihm[11]).trim().equals("1")) {
+        } else if (tglKeluar.equalsIgnoreCase("1900-01-01")) {
             lStatus.setValue("ACTIVE");
             lStatus.setStyle("color:#00FF00");
-        } else if (Libs.nn(ihm[11]).trim().equals("2")) {
+        } else {
             lStatus.setValue("CLOSED");
             lStatus.setStyle("color:#FF0000;");
         }
@@ -83,7 +88,8 @@ public class InHospitalMonitoringDetailController extends Window {
         ((Label) getFellow("lDiagnosis")).setValue(Libs.nn(ihm[20]).trim() + " (" + Libs.nn(ihm[21]).trim() + ")");
         ((Label) getFellow("lPIC")).setValue(Libs.nn(ihm[22]).trim());
         ((Label) getFellow("lGLDate")).setValue(Libs.nn(ihm[23]).substring(0, 10));
-        ((Label) getFellow("lServiceOut")).setValue(ihm[29]==null ? (Libs.nn(ihm[24]).startsWith("1900") ? "" : Libs.nn(ihm[24]).substring(0, 10)) : Libs.nn(ihm[29]));
+        if(tglKeluar.equalsIgnoreCase("1900-01-01"))((Label) getFellow("lServiceOut")).setValue(null);
+        else ((Label) getFellow("lServiceOut")).setValue(tglKeluar);
 
         Label lLastCostEstimation = (Label) getFellow("lLastCostEstimation");
         lLastCostEstimation.setStyle("text-align:right;");
@@ -157,7 +163,7 @@ public class InHospitalMonitoringDetailController extends Window {
 
                 ((Label) getFellow("lFinalDiagnosis")).setValue(finalDiagnosis);
                 ((Label) getFellow("lReceiptNumber")).setValue(Libs.nn(o[4]).trim());
-                ((Label) getFellow("lServiceOut")).setValue(Libs.nn(o[5]).substring(0, 10));
+//                ((Label) getFellow("lServiceOut")).setValue(Libs.nn(o[5]).substring(0, 10));
 
                 Label lFinalAmount = (Label) getFellow("lFinalAmount");
                 lFinalAmount.setStyle("font-weight:bold;");

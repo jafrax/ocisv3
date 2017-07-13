@@ -1,0 +1,14 @@
+<window width="100%" height="100%" apply="com.imc.ocisv3.controllers.ReportListController">
+    <borderlayout width="100%" height="100%">
+        <north style="border:0px none;">
+            <vlayout width="100%" style="padding: 10px;">
+                <label value="Report List" style="font-size: 24pt; color: #999999;"/>
+                <space height="10px"/>
+            </vlayout>
+        </north>
+        <center style="border:0px none;">
+        	<vbox id="vbox">
+        	</vbox>
+        </center>
+    </borderlayout>
+</window>

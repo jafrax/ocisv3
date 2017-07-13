@@ -1,23 +1,5 @@
 package com.imc.ocisv3.controllers;
 
-import com.imc.ocisv3.pojos.PolicyPOJO;
-import com.imc.ocisv3.tools.Libs;
-import org.apache.poi.hssf.usermodel.HSSFSheet;
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
-import org.apache.poi.poifs.filesystem.POIFSFileSystem;
-import org.hibernate.Hibernate;
-import org.hibernate.SQLQuery;
-import org.hibernate.Session;
-import org.hibernate.type.Type;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.zkoss.zk.ui.Executions;
-import org.zkoss.zk.ui.event.Event;
-import org.zkoss.zk.ui.event.EventListener;
-import org.zkoss.zk.ui.event.Events;
-import org.zkoss.zul.*;
-import org.zkoss.zul.event.PagingEvent;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -26,6 +8,31 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
+import org.apache.poi.hssf.usermodel.HSSFSheet;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.hibernate.SQLQuery;
+import org.hibernate.Session;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.zkoss.zk.ui.Executions;
+import org.zkoss.zk.ui.event.Event;
+import org.zkoss.zk.ui.event.EventListener;
+import org.zkoss.zk.ui.event.Events;
+import org.zkoss.zul.A;
+import org.zkoss.zul.Combobox;
+import org.zkoss.zul.Filedownload;
+import org.zkoss.zul.Label;
+import org.zkoss.zul.Listbox;
+import org.zkoss.zul.Listcell;
+import org.zkoss.zul.Listitem;
+import org.zkoss.zul.Paging;
+import org.zkoss.zul.Textbox;
+import org.zkoss.zul.Window;
+import org.zkoss.zul.event.PagingEvent;
+
+import com.imc.ocisv3.pojos.PolicyPOJO;
+import com.imc.ocisv3.tools.Libs;
+
 /**
  * Created by faizal on 10/24/13.
  */
@@ -33,45 +40,144 @@ public class PoliciesController extends Window {
 
     private Logger log = LoggerFactory.getLogger(PoliciesController.class);
     private Listbox lb;
+    private Combobox cbProduct;
     private Paging pg;
     private String where;
     private String userProductViewrestriction;
+    
+    String insid="";
+    List products = null;
+    
+    private String polis ="";
+    private List polisList;
 
     public void onCreate() {
         if (!Libs.checkSession()) {
             userProductViewrestriction = Libs.restrictUserProductView.get(Libs.getUser());
             initComponents();
+            
+            /*
+            polisList = Libs.getPolisByUserId(Libs.getUser());
+            for(int i=0; i < polisList.size(); i++){
+        		polis=polis+"'"+(String)polisList.get(i)+"'"+",";
+        	}
+            if(polis.length() > 1)polis = polis.substring(0, polis.length()-1);
+            
             populate(0, pg.getPageSize());
+            */
+            populateNewOcis(0, pg.getPageSize());
         }
     }
 
     private void initComponents() {
         lb = (Listbox) getFellow("lb");
         pg = (Paging) getFellow("pg");
+        cbProduct = (Combobox) getFellow("cbProduct");
 
         pg.addEventListener("onPaging", new EventListener() {
             @Override
             public void onEvent(Event event) throws Exception {
                 PagingEvent evt = (PagingEvent) event;
-                populate(evt.getActivePage()*pg.getPageSize(), pg.getPageSize());
+//                populate(evt.getActivePage()*pg.getPageSize(), pg.getPageSize());
+                populateNewOcis(evt.getActivePage()*pg.getPageSize(), pg.getPageSize());
             }
         });
+        
+        cbProduct.setSelectedIndex(0);
+        
+       
+    	products = Libs.getProductByUserId(Libs.getUser());
+    	for(int i=0; i < products.size(); i++){
+    		insid=insid+"'"+(String)products.get(i)+"'"+",";
+    	}
+    	
+    	if(insid.length() > 1)insid = insid.substring(0, insid.length()-1);
     }
     
+    private void populateNewOcis(int offset, int limit){
+    	lb.getItems().clear();
+    	
+    	Session s = Libs.sfOCIS.openSession();
+    	try{
+    		
+    		String qryCount = "Select count(1) ";
+    		String select = "Select * ";
+    		String sql = " from "+ Libs.getDbName()+".dbo.F_OCISProduct(:id) ";
+    		if(cbProduct.getSelectedIndex() == 0) {
+    			sql = sql + "where PolisStatus='Active'";
+    			if(where != null) sql = sql + " and "+where;
+    		}
+    		else if(cbProduct.getSelectedIndex() == 1) {
+    			sql = sql + "where PolisStatus='Close'";
+    			if(where != null) sql = sql + " and "+where;
+    		}else{
+    			if(where != null) sql = sql + " where "+where;
+    		}
+    		
+    		String order = " order by PolisName";
+    		
+    		SQLQuery countQry = s.createSQLQuery(qryCount+sql);
+    		countQry.setInteger("id", Libs.getNewInsuranceId());
+    		
+    		 Integer count = (Integer) countQry.uniqueResult();
+             pg.setTotalSize(count);
+    		
+    		
+    		SQLQuery q = s.createSQLQuery(select+sql+order);
+    		q.setInteger("id", Libs.getNewInsuranceId());
+    		
+    		List<Object[]> l = q.setFirstResult(offset).setMaxResults(limit).list();
+    		
+    		for(final Object[] o : l){
+    			Listitem item = new Listitem();
+    			
+    			item.appendChild(new Listcell(Libs.nn(o[0])));
+    			
+    			A policyName = new A(Libs.nn(o[1]).trim());
+                policyName.setStyle("color:#00bbee;text-decoration:none");
+                
+                Listcell cell = new Listcell();
+                cell.appendChild(policyName);
+                
+                
+    			item.appendChild(cell);
+    			item.appendChild(new Listcell(Libs.nn(o[2])));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[3], "#,###"));
+    			item.appendChild(new Listcell(Libs.formatDate((Date)o[4])));
+    			item.appendChild(new Listcell(Libs.formatDate((Date)o[5])));
+    			
+    			final Integer policyId = (Integer)o[6];
+    			
+    			lb.appendChild(item);
+    			
+    			policyName.addEventListener(Events.ON_CLICK, new EventListener<Event>() {
+
+					@Override
+					public void onEvent(Event arg0) throws Exception {
+						showPolicyDetailNew(o);
+						
+					}
+				});
+    			
+    		}
+    		
+    	}catch(Exception e){
+    		log.error("populateNewOcis",e);
+    	}finally{
+    		if (s!=null && s.isOpen()) s.close();
+    	}
+    	
+    }
 
     private void populate(int offset, int limit) {
         lb.getItems().clear();
 
         Session s = Libs.sfDB.openSession();
+        
         try {
         	
-        	String insid="";
-        	List products = Libs.getProductByUserId(Libs.getUser());
-        	for(int i=0; i < products.size(); i++){
-        		insid=insid+"'"+(String)products.get(i)+"'"+",";
-        	}
         	
-        	if(insid.length() > 1)insid = insid.substring(0, insid.length()-1);
+        	
         	
             String countQry = "select count(*) "
                     + "from idnhltpf.dbo.hlthdr a "
@@ -83,8 +189,18 @@ public class PoliciesController extends Window {
                     	countQry = countQry + " in ("+insid+") ";
                     }
                     else{
-                    	countQry = countQry + " = '" + Libs.getInsuranceId() + "'";
+                    	countQry = countQry + " = '" + Libs.getInsuranceId() + "' ";
                     }
+                    
+                    if(polisList.size() > 0){
+                    	countQry = countQry + "and convert(varchar,a.hhdryy)+'-'+convert(varchar,a.hhdrbr)+'-'+convert(varchar,a.hhdrdist)+'-'+convert(varchar,a.hhdrpono) "
+            					  + "in ("+polis+") ";
+            		} 
+                    
+                    if(cbProduct.getSelectedIndex() == 0)
+                    	countQry = countQry + " and convert(datetime,convert(varchar,hhdrmdtmm)+'-'+convert(varchar, hhdrmdtdd)+'-'+convert(varchar,hhdrmdtyy), 110) >= GETDATE() ";
+                    else if(cbProduct.getSelectedIndex() == 1)
+                    	countQry = countQry + " and convert(datetime,convert(varchar,hhdrmdtmm)+'-'+convert(varchar, hhdrmdtdd)+'-'+convert(varchar,hhdrmdtyy), 110) < GETDATE() ";
                   
 
             String qry = "select "
@@ -95,10 +211,19 @@ public class PoliciesController extends Window {
                     + "from idnhltpf.dbo.hlthdr a "
                     + "where "
                     + "a.hhdrinsid";
-            	if(products.size() > 0) qry = qry + " in  ("+insid+")";
-            	else qry = qry + " = '" + Libs.getInsuranceId() + "'";
+            	if(products.size() > 0) qry = qry + " in  ("+insid+") ";
+            	else qry = qry + " = '" + Libs.getInsuranceId() + "' ";
+            	
+            	if(polisList.size() > 0){
+        			qry = qry + "and convert(varchar,a.hhdryy)+'-'+convert(varchar,a.hhdrbr)+'-'+convert(varchar,a.hhdrdist)+'-'+convert(varchar,a.hhdrpono) "
+        					  + "in ("+polis+") ";
+        		} 
             
-            
+            	if(cbProduct.getSelectedIndex() == 0)
+                	qry = qry + " and convert(datetime,convert(varchar,hhdrmdtmm)+'-'+convert(varchar, hhdrmdtdd)+'-'+convert(varchar,hhdrmdtyy), 110) >= GETDATE() ";
+                else if(cbProduct.getSelectedIndex() == 1)
+                	qry = qry + " and convert(datetime,convert(varchar,hhdrmdtmm)+'-'+convert(varchar, hhdrmdtdd)+'-'+convert(varchar,hhdrmdtyy), 110) < GETDATE() ";
+
 
             if (where!=null) {
                 countQry += "and (" + where + ") ";
@@ -173,8 +298,12 @@ public class PoliciesController extends Window {
 				});
 
                 if (show) lb.appendChild(li);
+                
+
+                
             }
         } catch (Exception ex) {
+
             log.error("populate", ex);
         } finally {
             if (s!=null && s.isOpen()) s.close();
@@ -223,20 +352,31 @@ public class PoliciesController extends Window {
 
     public void refresh() {
         where = null;
-        populate(0, pg.getPageSize());
+//        populate(0, pg.getPageSize());
+        populateNewOcis(0, pg.getPageSize());
     }
 
     public void quickSearch() {
         String val = ((Textbox) getFellow("tQuickSearch")).getText();
         if (!val.isEmpty()) {
-            where = "convert(varchar,a.hhdrpono) like '%" + val + "%' or "
+            /*where = "convert(varchar,a.hhdrpono) like '%" + val + "%' or "
                     + "a.hhdrname like '%" + val + "%' ";
-            populate(0, pg.getPageSize());
+                    */
+        	where = "PolisName like '%" + val + "%'";
+//            populate(0, pg.getPageSize());
+        	populateNewOcis(0, pg.getPageSize());
         } else refresh();
     }
 
-    public void lbSelected() {
-
+    public void productSelected() {
+    	quickSearch();
+    }
+    
+    public void showPolicyDetailNew(Object[] pojo) {
+        if (Libs.getCenter().getChildren().size()>0) Libs.getCenter().removeChild(Libs.getCenter().getFirstChild());
+        Window w = (Window) Executions.createComponents("views/PolicyDetail.zul", Libs.getCenter(), null);
+//        w.setAttribute("policy", lb.getSelectedItem().getValue());
+        w.setAttribute("policy", pojo);
     }
 
     public void showPolicyDetail(PolicyPOJO pojo) {
@@ -270,6 +410,12 @@ public class PoliciesController extends Window {
             
             		if(products.size() > 0) qry = qry + " in  ("+insid+") ";
             		else qry = qry + "='" + Libs.getInsuranceId() + "' ";  //='" + Libs.getInsuranceId() + "' ";
+            		
+
+                	if(cbProduct.getSelectedIndex() == 0)
+                    	qry = qry + " and convert(datetime,convert(varchar,hhdrmdtmm)+'-'+convert(varchar, hhdrmdtdd)+'-'+convert(varchar,hhdrmdtyy), 110) >= GETDATE() ";
+                    else if(cbProduct.getSelectedIndex() == 1)
+                    	qry = qry + " and convert(datetime,convert(varchar,hhdrmdtmm)+'-'+convert(varchar, hhdrmdtdd)+'-'+convert(varchar,hhdrmdtyy), 110) < GETDATE() ";
 
             if (where!=null) qry += "and (" + where + ") ";
 
@@ -279,6 +425,10 @@ public class PoliciesController extends Window {
 
             HSSFWorkbook wb = new HSSFWorkbook();
             HSSFSheet sheet = wb.createSheet("Policies");
+            
+            
+           
+            
             Libs.createXLSRow(sheet, 0, new Object[] {
                     "Policy Number",
                     "Name",
@@ -309,6 +459,13 @@ public class PoliciesController extends Window {
                 row++;
             }
 
+            sheet.autoSizeColumn(0);
+            sheet.autoSizeColumn(1);
+            sheet.autoSizeColumn(2);
+            sheet.autoSizeColumn(3);
+            sheet.autoSizeColumn(4);
+            sheet.autoSizeColumn(5);
+            
             wb.write(fos);
             fos.close();
 

@@ -11,7 +11,17 @@ public class BenefitPOJO implements Serializable {
 
     private String plan_code;
     private double limit;
-    private List<String> plan_items = new ArrayList<String>();
+    boolean isLimitGaji = false;
+    
+    public boolean isLimitGaji() {
+		return isLimitGaji;
+	}
+
+	public void setLimitGaji(boolean isLimitGaji) {
+		this.isLimitGaji = isLimitGaji;
+	}
+
+	private List<String> plan_items = new ArrayList<String>();
 
     public String getPlan_code() {
         return plan_code;

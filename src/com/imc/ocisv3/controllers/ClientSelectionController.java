@@ -1,6 +1,8 @@
 package com.imc.ocisv3.controllers;
 
 import com.imc.ocisv3.tools.Libs;
+
+import org.hibernate.SQLQuery;
 import org.hibernate.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,8 +73,20 @@ public class ClientSelectionController extends Window {
         lbInactive.getItems().clear();
         Session s = Libs.sfDB.openSession();
         try {
-            String countQry = "select count(*) from ocis.dbo.cis_inslf where hinsid not in (" + activeClients + ") ";
-            String qry = "select hinsid, hinsname from ocis.dbo.cis_inslf where hinsid not in (" + activeClients + ") ";
+//            String countQry = "select count(*) from ocis.dbo.cis_inslf where hinsid not in (" + activeClients + ") ";
+//            String qry = "select hinsid, hinsname from ocis.dbo.cis_inslf where hinsid not in (" + activeClients + ") ";
+            
+            String countQry = "select count(1) from IDNHLTPF.dbo.HLTINS where HINSID not in ( "
+        		    +"select HINSID from (select distinct hinsid, hinsname from IDNHLTPF.dbo.hltins "
+        		    +"inner join IDNHLTPF.dbo.hlthdr on HINSID=HHDRINSID where "
+        		    +"convert(datetime, convert(varchar,HHDRMDTMM)+'-'+convert(varchar,HHDRMDTDD)+'-'+convert(varchar,HHDRMDTYY),110) >= GETDATE() "
+        		    +"AND HINSID <> 99999) q ) and HINSID not in ('99998','99999') ";
+            
+            String qry = "select hinsid, hinsname from IDNHLTPF.dbo.HLTINS where HINSID not in ( "
+            		    +"select HINSID from (select distinct hinsid, hinsname from IDNHLTPF.dbo.hltins "
+            		    +"inner join IDNHLTPF.dbo.hlthdr on HINSID=HHDRINSID where "
+            		    +"convert(datetime, convert(varchar,HHDRMDTMM)+'-'+convert(varchar,HHDRMDTDD)+'-'+convert(varchar,HHDRMDTYY),110) >= GETDATE() "
+            		    +"AND HINSID <> 99999) q ) and HINSID not in ('99998','99999') ";
 
             if (where!=null) {
                 countQry += "and (" + where + ") ";
@@ -108,12 +122,23 @@ public class ClientSelectionController extends Window {
         lbActive.getItems().clear();
         Session s = Libs.sfDB.openSession();
         try {
-            String countQry = "select count(*) from idnhltpf.dbo.hltins where hinsid in (" + activeClients + ") ";
-            String qry = "select hinsid, hinsname from idnhltpf.dbo.hltins where hinsid in (" + activeClients + ") ";
+//            String countQry = "select count(*) from idnhltpf.dbo.hltins where hinsid in (" + activeClients + ") ";
+//            String qry = "select hinsid, hinsname from idnhltpf.dbo.hltins where hinsid in (" + activeClients + ") ";
+        	
+        	String countQry = "select COUNT(1) from ( select distinct hinsid, hinsname from IDNHLTPF.dbo.hltins "
+        			         +"inner join IDNHLTPF.dbo.hlthdr on HINSID=HHDRINSID "
+        			         +"where "
+        			         +"convert(datetime, convert(varchar,HHDRMDTMM)+'-'+convert(varchar,HHDRMDTDD)+'-'+convert(varchar,HHDRMDTYY),110) >= GETDATE() "
+        			         +"AND HINSID <> 99999) q ";
+        	String qry = "select hinsid, hinsname from (select distinct hinsid, hinsname from IDNHLTPF.dbo.hltins "
+        			    +"inner join IDNHLTPF.dbo.hlthdr on HINSID=HHDRINSID "
+        			    +"where "
+        			    +"convert(datetime, convert(varchar,HHDRMDTMM)+'-'+convert(varchar,HHDRMDTDD)+'-'+convert(varchar,HHDRMDTYY),110) >= GETDATE() "
+        			    +"AND HINSID <> 99999) q ";
 
             if (where!=null) {
-                countQry += "and (" + where + ") ";
-                qry += "and (" + where + ") ";
+                countQry += "where (" + where + ") ";
+                qry += "where (" + where + ") ";
             }
 
             qry += "order by hinsname asc";
@@ -148,14 +173,24 @@ public class ClientSelectionController extends Window {
     }
 
     public void inactiveClientSelected() {
+    	if(Executions.getCurrent().getSession().getAttribute("insuranceId") != null)
+        	Executions.getCurrent().getSession().removeAttribute("insuranceId");
+    	
         Libs.getSession().setAttribute("insuranceId", lbInactive.getSelectedItem().getValue().toString());
         Executions.sendRedirect("../main.zul");
     }
 
     public void activeClientSelected() {
-        Libs.getSession().setAttribute("insuranceId", lbActive.getSelectedItem().getValue().toString());
+    	if(Executions.getCurrent().getSession().getAttribute("insuranceId") != null)
+        	Executions.getCurrent().getSession().removeAttribute("insuranceId");
+    	
+    	Integer clientId = Libs.getNewClientId(lbActive.getSelectedItem().getValue().toString());
+//        Libs.getSession().setAttribute("insuranceId", lbActive.getSelectedItem().getValue().toString());
+    	Libs.getSession().setAttribute("insuranceId", clientId);
         Executions.sendRedirect("../main.zul");
     }
+    
+    
 
     public void quickSearch() {
         String val = ((Textbox) getFellow("tQuickSearch")).getText();

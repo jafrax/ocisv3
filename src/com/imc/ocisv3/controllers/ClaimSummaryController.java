@@ -1,6 +1,8 @@
 package com.imc.ocisv3.controllers;
 
 import com.imc.ocisv3.tools.Libs;
+
+import org.hibernate.SQLQuery;
 import org.hibernate.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,15 +32,31 @@ public class ClaimSummaryController extends Window {
     private Combobox cbPolicy;
     private Tabbox tbx;
     private String userProductViewrestriction;
+    
+    private String polis ="";
+    private List polisList;
 
     public void onCreate() {
         if (!Libs.checkSession()) {
             userProductViewrestriction = Libs.restrictUserProductView.get(Libs.getUser());
             initComponents();
+            
+            /*
+            polisList = Libs.getPolisByUserId(Libs.getUser());
+            for(int i=0; i < polisList.size(); i++){
+        		polis=polis+"'"+(String)polisList.get(i)+"'"+",";
+        	}
+            if(polis.length() > 1)polis = polis.substring(0, polis.length()-1); */
+            
+            populateFrequenceyNewOcis();
+            populateAmountNewOcis();
+            populateHIDNewOcis();
+            populateExcessNewOcis();
+            /*
             populateFrequency();
             populateAmount();
             populateHID();
-            populateExcess();
+            populateExcess(); */
         }
     }
 
@@ -94,8 +112,10 @@ public class ClaimSummaryController extends Window {
         cbPolicy.appendItem("All Policies");
         cbPolicy.setSelectedIndex(0);
         boolean show = true;
-        for (String s : Libs.policyMap.keySet()) {
-            String policyName = Libs.policyMap.get(s);
+//        for (String s : Libs.policyMap.keySet()) {
+        for (String s : Libs.getPolicyMap().keySet()) {
+//            String policyName = Libs.policyMap.get(s);
+        	String policyName = Libs.getPolicyMap().get(s);
             if (Libs.config.get("demo_mode").equals("true") && Libs.getInsuranceId().equals("00051")) policyName = Libs.nn(Libs.config.get("demo_name"));
 
             String restriction = Libs.restrictUserProductView.get(Libs.getUser());
@@ -106,6 +126,44 @@ public class ClaimSummaryController extends Window {
 
             if (show) cbPolicy.appendItem(policyName + " (" + s + ")");
         }
+    }
+    
+    private void populateFrequenceyNewOcis(){
+    	lbFrequency.getItems().clear();
+    	
+    	Session s = Libs.sfOCIS.openSession();
+    	
+    	try{
+    		String sql = "EXEC "+Libs.getDbName()+".dbo.S_OCISClaimSumByFreq :idClient";
+    		SQLQuery query = s.createSQLQuery(sql);
+    		query.setInteger("idClient", Libs.getNewInsuranceId());
+    		
+    		List<Object[]> l = query.list();
+    		for(Object[] o : l){
+    			Listitem item = new Listitem();
+    			item.appendChild(new Listcell(Libs.nn(o[1])));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[2], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[3], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[4], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[5], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[6], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[7], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[8], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[9], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[10], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[11], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[12], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[13], "#,###"));
+    			
+    			
+    			lbFrequency.appendChild(item);
+    		}
+    		
+    	}catch(Exception e){
+    		log.error("populateFrequenceyNewOcis",e);
+    	}finally{
+    		if(s != null && s.isOpen()) s.close();
+    	}
     }
 
     private void populateFrequency() {
@@ -120,7 +178,7 @@ public class ClaimSummaryController extends Window {
         	List products = Libs.getProductByUserId(Libs.getUser());
         	for(int i=0; i < products.size(); i++){
         		insid=insid+"'"+(String)products.get(i)+"'"+",";
-        	}
+        	
         	if(insid.length() > 1)insid = insid.substring(0, insid.length()-1);
         	
             String qry = "select "
@@ -129,9 +187,15 @@ public class ClaimSummaryController extends Window {
                     + "inner join idnhltpf.dbo.hlthdr b on b.hhdryy=a.hclmyy and b.hhdrpono=a.hclmpono "
                     + "where "
                     + "b.hhdrinsid";
-    				if(products.size() > 0) qry = qry + " in  ("+insid+")";
+    				if(products.size() > 0) qry = qry + " in  ("+insid+") ";
     				else qry = qry + "='" + Libs.getInsuranceId() + "' ";  
-                    qry = qry + " and a.hclmrecid<>'C' ";
+                    qry = qry + " and a.hclmrecid<>'C' and a.hclmidxno < 99989 and a.hclmpono <> 99999 ";
+                    
+                    
+                    if(polisList.size() > 0){
+            			qry = qry + "and convert(varchar,b.hhdryy)+'-'+convert(varchar,b.hhdrbr)+'-'+convert(varchar,b.hhdrdist)+'-'+convert(varchar,b.hhdrpono) "
+            					  + "in ("+polis+") ";
+            		} 
 
             if (!Libs.nn(userProductViewrestriction).isEmpty()) qry += "and b.hhdrpono in (" + userProductViewrestriction + ") ";
 
@@ -153,9 +217,9 @@ public class ClaimSummaryController extends Window {
             int emptyInpatient = 0;
             Listitem liInpatient = new Listitem();
             liInpatient.appendChild(new Listcell("INPATIENT"));
-            for (int i=-11; i<1; i++) {
+            for (int j=-11; j<1; j++) {
                 Calendar cal = Calendar.getInstance();
-                cal.add(Calendar.MONTH, i);
+                cal.add(Calendar.MONTH, j);
                 String key = cal.get(Calendar.YEAR) + "-" + cal.get(Calendar.MONTH) + "-I";
                 if (claimMap.get(key)==null) emptyInpatient++;
                 liInpatient.appendChild((claimMap.get(key))==null ? new Listcell("") : new ClaimListcell(this, key, claimMap.get(key), "#"));
@@ -165,9 +229,9 @@ public class ClaimSummaryController extends Window {
             int emptyOutpatient = 0;
             Listitem liOutpatient = new Listitem();
             liOutpatient.appendChild(new Listcell("OUTPATIENT"));
-            for (int i=-11; i<1; i++) {
+            for (int j =-11; j<1; j++) {
                 Calendar cal = Calendar.getInstance();
-                cal.add(Calendar.MONTH, i);
+                cal.add(Calendar.MONTH, j);
                 String key = cal.get(Calendar.YEAR) + "-" + cal.get(Calendar.MONTH) + "-O";
                 if (claimMap.get(key)==null) emptyOutpatient++;
                 liOutpatient.appendChild((claimMap.get(key))==null ? new Listcell("") : new ClaimListcell(this, key, claimMap.get(key), "#"));
@@ -177,9 +241,9 @@ public class ClaimSummaryController extends Window {
             int emptyMaternity = 0;
             Listitem liMaternity = new Listitem();
             liMaternity.appendChild(new Listcell("MATERNITY"));
-            for (int i=-11; i<1; i++) {
+            for (int j=-11; j<1; j++) {
                 Calendar cal = Calendar.getInstance();
-                cal.add(Calendar.MONTH, i);
+                cal.add(Calendar.MONTH, j);
                 String key = cal.get(Calendar.YEAR) + "-" + cal.get(Calendar.MONTH) + "-R";
                 if (claimMap.get(key)==null) emptyMaternity++;
                 liMaternity.appendChild((claimMap.get(key))==null ? new Listcell("") : new ClaimListcell(this, key, claimMap.get(key), "#"));
@@ -189,9 +253,9 @@ public class ClaimSummaryController extends Window {
             int emptyDental = 0;
             Listitem liDental = new Listitem();
             liDental.appendChild(new Listcell("DENTAL"));
-            for (int i=-11; i<1; i++) {
+            for (int j=-11; j<1; j++) {
                 Calendar cal = Calendar.getInstance();
-                cal.add(Calendar.MONTH, i);
+                cal.add(Calendar.MONTH, j);
                 String key = cal.get(Calendar.YEAR) + "-" + cal.get(Calendar.MONTH) + "-D";
                 if (claimMap.get(key)==null) emptyDental++;
                 liDental.appendChild((claimMap.get(key))==null ? new Listcell("") : new ClaimListcell(this, key, claimMap.get(key), "#"));
@@ -201,9 +265,9 @@ public class ClaimSummaryController extends Window {
             int emptyGlasses = 0;
             Listitem liGlasses = new Listitem();
             liGlasses.appendChild(new Listcell("GLASSES"));
-            for (int i=-11; i<1; i++) {
+            for (int j=-11; j<1; j++) {
                 Calendar cal = Calendar.getInstance();
-                cal.add(Calendar.MONTH, i);
+                cal.add(Calendar.MONTH, j);
                 String key = cal.get(Calendar.YEAR) + "-" + cal.get(Calendar.MONTH) + "-G";
                 if (claimMap.get(key)==null) emptyGlasses++;
                 liGlasses.appendChild((claimMap.get(key))==null ? new Listcell("") : new ClaimListcell(this, key, claimMap.get(key), "#"));
@@ -217,11 +281,51 @@ public class ClaimSummaryController extends Window {
             if (liGlasses.getChildren().size()>1 && emptyGlasses!=12) lbFrequency.appendChild(liGlasses);
 
             chartFrequency.setModel(cm);
-        } catch (Exception ex) {
+        	}
+        }catch (Exception ex) {
             log.error("populateFrequency", ex);
         } finally {
             if (s!=null && s.isOpen()) s.close();
         }
+    }
+        
+    private void populateAmountNewOcis(){
+    	lbAmount.getItems().clear();
+    	Session s = Libs.sfOCIS.openSession();
+    	try{
+    		String sql = "Exec "+Libs.getDbName()+".dbo.S_OCISClaimSumByAmount :idClient";
+    		SQLQuery q = s.createSQLQuery(sql);
+    		q.setInteger("idClient", Libs.getNewInsuranceId());
+    		
+    		List<Object[]> l = q.list();
+    		
+    		for(Object[] o : l){
+    		Listitem item = new Listitem();
+    		
+    		item.appendChild(new Listcell(Libs.nn(o[1])));
+			item.appendChild(Libs.createNumericListcell((Integer)o[2], "#,###"));
+			item.appendChild(Libs.createNumericListcell((Integer)o[3], "#,###"));
+			item.appendChild(Libs.createNumericListcell((Integer)o[4], "#,###"));
+			item.appendChild(Libs.createNumericListcell((Integer)o[5], "#,###"));
+			item.appendChild(Libs.createNumericListcell((Integer)o[6], "#,###"));
+			item.appendChild(Libs.createNumericListcell((Integer)o[7], "#,###"));
+			item.appendChild(Libs.createNumericListcell((Integer)o[8], "#,###"));
+			item.appendChild(Libs.createNumericListcell((Integer)o[9], "#,###"));
+			item.appendChild(Libs.createNumericListcell((Integer)o[10], "#,###"));
+			item.appendChild(Libs.createNumericListcell((Integer)o[11], "#,###"));
+			item.appendChild(Libs.createNumericListcell((Integer)o[12], "#,###"));
+			item.appendChild(Libs.createNumericListcell((Integer)o[13], "#,###"));
+    		
+    		lbAmount.appendChild(item);
+    		
+    		}
+    		
+    	}catch(Exception e){
+    		log.error("populateAmountNewOcis",e);
+    	}finally{
+    		if(s != null && s.isOpen())s.close();
+    	}
+    	
     }
 
     private void populateAmount() {
@@ -247,9 +351,15 @@ public class ClaimSummaryController extends Window {
                     + "inner join idnhltpf.dbo.hlthdr b on b.hhdryy=a.hclmyy and b.hhdrpono=a.hclmpono "
                     + "where "
                     + "b.hhdrinsid";
-    				if(products.size() > 0) qry = qry + " in  ("+insid+")";
+    				if(products.size() > 0) qry = qry + " in  ("+insid+") ";
     				else qry = qry + "='" + Libs.getInsuranceId() + "' ";  
-                    qry = qry + " and a.hclmrecid<>'C' ";
+    				
+    				if(polisList.size() > 0){
+            			qry = qry + "and convert(varchar,b.hhdryy)+'-'+convert(varchar,b.hhdrbr)+'-'+convert(varchar,b.hhdrdist)+'-'+convert(varchar,b.hhdrpono) "
+            					  + "in ("+polis+") ";
+            		} 
+    				
+                    qry = qry + " and a.hclmrecid<>'C' and a.hclmidxno < 99989 and a.hclmpono <> 99999 ";
 
             if (!Libs.nn(userProductViewrestriction).isEmpty()) qry += "and b.hhdrpono in (" + userProductViewrestriction + ") ";
 
@@ -342,6 +452,49 @@ public class ClaimSummaryController extends Window {
         }
     }
 
+    
+    
+    
+    private void populateHIDNewOcis(){
+    	lbHID.getItems().clear();
+    	Session s = Libs.sfOCIS.openSession();
+    	try{
+    		
+    		String sql = "Exec "+Libs.getDbName()+".dbo.S_OCISClaimSumByHID :idClient";
+    		
+    		
+    		SQLQuery q = s.createSQLQuery(sql);
+    		q.setInteger("idClient", Libs.getNewInsuranceId());
+    		List<Object[]> l = q.list();
+    		for(Object[] o : l){
+    			Listitem item = new Listitem();
+    			
+    			item.appendChild(new Listcell(Libs.nn(o[1])));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[2], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[3], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[4], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[5], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[6], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[7], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[8], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[9], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[10], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[11], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[12], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[13], "#,###"));
+    			
+    			lbHID.appendChild(item);
+    		}
+    		
+    	}catch(Exception e){
+    		
+    	log.error("populateHIDNewOcis",e);
+    	}finally{
+    		if(s != null && s.isOpen()) s.close();
+    	}
+    }
+    
+    
     private void populateHID() {
         lbHID.getItems().clear();
         Map<String,Double> claimMap = new HashMap<String,Double>();
@@ -366,7 +519,13 @@ public class ClaimSummaryController extends Window {
                     + "b.hhdrinsid";
     				if(products.size() > 0) qry = qry + " in  ("+insid+")";
     				else qry = qry + "='" + Libs.getInsuranceId() + "' ";  
-                    qry = qry + " and hclmrecid<>'C' ";
+    				
+    				if(polisList.size() > 0){
+            			qry = qry + "and convert(varchar,b.hhdryy)+'-'+convert(varchar,b.hhdrbr)+'-'+convert(varchar,b.hhdrdist)+'-'+convert(varchar,b.hhdrpono) "
+            					  + "in ("+polis+") ";
+            		} 
+    				
+                    qry = qry + " and hclmrecid<>'C' and a.hclmidxno < 99989 and a.hclmpono <> 99999 ";
 
             if (!Libs.nn(userProductViewrestriction).isEmpty()) qry += "and b.hhdrpono in (" + userProductViewrestriction + ") ";
 
@@ -458,7 +617,38 @@ public class ClaimSummaryController extends Window {
             if (s!=null && s.isOpen()) s.close();
         }
     }
-
+    
+    private void populateExcessNewOcis(){
+    	lbExcess.getItems().clear();
+    	Session s = Libs.sfOCIS.openSession();
+    	try{
+    		String sql = "Exec "+Libs.getDbName()+".dbo.S_OCISClaimSumByExcess :idClient";
+    		SQLQuery q = s.createSQLQuery(sql);
+    		q.setInteger("idClient", Libs.getNewInsuranceId());
+    		List<Object[]> l = q.list();
+    		for(Object[] o : l){
+    			Listitem item = new Listitem();
+    			item.appendChild(new Listcell(Libs.nn(o[1])));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[2], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[3], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[4], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[5], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[6], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[7], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[8], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[9], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[10], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[11], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[12], "#,###"));
+    			item.appendChild(Libs.createNumericListcell((Integer)o[13], "#,###"));
+    			lbExcess.appendChild(item);
+    		}
+    	}catch(Exception e){
+    		log.error("populateExcessNewOcis",e);
+    	}finally{
+    		if(s != null && s.isOpen())s.close();
+    	}
+    }
     private void populateExcess() {
         lbExcess.getItems().clear();
         Map<String,Double> claimMap = new HashMap<String,Double>();
@@ -484,7 +674,13 @@ public class ClaimSummaryController extends Window {
                     + "b.hhdrinsid";
     				if(products.size() > 0) qry = qry + " in  ("+insid+")";
     				else qry = qry + "='" + Libs.getInsuranceId() + "' ";  
-                    qry = qry + " and a.hclmrecid<>'C' ";
+    				
+    				if(polisList.size() > 0){
+            			qry = qry + "and convert(varchar,b.hhdryy)+'-'+convert(varchar,b.hhdrbr)+'-'+convert(varchar,b.hhdrdist)+'-'+convert(varchar,b.hhdrpono) "
+            					  + "in ("+polis+") ";
+            		} 
+    				
+                    qry = qry + " and a.hclmrecid<>'C' and a.hclmidxno < 99989 and a.hclmpono <> 99999 ";
 
             if (!Libs.nn(userProductViewrestriction).isEmpty()) qry += "and b.hhdrpono in (" + userProductViewrestriction + ") ";
 

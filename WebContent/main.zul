@@ -22,7 +22,7 @@
         </style>
         <borderlayout width="100%" height="100%">
             <west size="220px" splittable="true" style="border-left:0px; border-top:0px; border-bottom:0px; background: url('resources/images/tile.png'); background-repeat: repeat;">
-                <vlayout height="100%" style="overflow:auto;">
+                <vlayout height="100%"> <!-- style="overflow:auto;" -->
                     <h:div>
                         <h:img src="resources/images/shadow.png" alt="shadow" class="shadow"/>
                     </h:div>
@@ -59,8 +59,15 @@
                                 <treechildren>
                                     <treeitem><treerow><treecell label="Claim Summary" image="/resources/icons/claim_summary.png" onClick='spaceOwner.open("ClaimSummary");' style="color:#FFFFFF; border:0px none;"/></treerow></treeitem>
                                     <treeitem><treerow><treecell label="Claim History" image="/resources/icons/claim_history.png" onClick='spaceOwner.open("ClaimHistory");' style="color:#FFFFFF; border:0px none;"/></treerow></treeitem>
+                                    <treeitem><treerow><treecell label="Excess Claim Provider" image="/resources/icons/claim_history.png" onClick='spaceOwner.open("ExcessClaim");' style="color:#FFFFFF; border:0px none;"/></treerow></treeitem>
                                     <treeitem><treerow><treecell label="Rejected/Pending Claims" image="/resources/icons/rd_claim.png" onClick='spaceOwner.open("RejectedPendingClaimList");' style="color:#FFFFFF; border:0px none;"/></treerow></treeitem>
                                 </treechildren>
+                            </treeitem>
+                            <treeitem id="finDA">
+                            	<treerow><treecell label="FinDA" style="color:#FFFFFF; border:0px none;"/></treerow>
+                            	<treechildren>
+                            		<treeitem><treerow><treecell label="Payment History" image="/resources/icons/finance1.png" onClick='spaceOwner.open("PaymentHistory");' style="color:#FFFFFF; border:0px none;"/></treerow></treeitem>
+                            	</treechildren>
                             </treeitem>
                             <treeitem>
                                 <treerow><treecell label="EDC Transactions" image="/resources/icons/edc.png" onClick='spaceOwner.open("EDCTransactions");' style="color:#FFFFFF; border:0px none;"/></treerow>
@@ -69,10 +76,13 @@
                                 <treerow><treecell image="/resources/icons/client.png" label="Client Selection" onClick="spaceOwner.clientSelection();" style="color:#FFFFFF; border:0px none;"/></treerow>
                             </treeitem>
                             <treeitem>
-                                <treerow><treecell label="Reports" style="color:#FFFFFF; border:0px none;"/></treerow>
+                                <treerow><treecell label="Reports" style="color:#FFFFFF; border:0px none;" onClick='spaceOwner.open("ReportList")'/></treerow>
                                 <treechildren>
-                                    <treeitem><treerow><treecell label="Download Report" image="/resources/icons/report.png" onClick="spaceOwner.openReportGenerator();" style="color:#FFFFFF; border:0px none;"/></treerow></treeitem>
+                                	<treeitem><treerow><treecell label="Raw Data" image="/resources/icons/report.png" onClick='spaceOwner.open("RawData")' style="color:#FFFFFF; border:0px none;"/></treerow></treeitem>
                                 </treechildren>
+                                <!-- <treechildren>
+                                    <treeitem><treerow><treecell label="Download Report" image="/resources/icons/report.png" onClick="spaceOwner.openReportGenerator();" style="color:#FFFFFF; border:0px none;"/></treerow></treeitem>
+                                </treechildren> -->
                             </treeitem>
                             <treeitem>
                                 <treerow><treecell label="Administration" style="color:#FFFFFF; border:0px none;"/></treerow>

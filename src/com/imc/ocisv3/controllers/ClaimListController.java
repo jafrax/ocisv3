@@ -97,7 +97,7 @@ public class ClaimListController extends Window {
                     + "left outer join idnhltpf.dbo.hltmemo2 f on f.hmem2yy=a.hclmyy and f.hmem2pono=a.hclmpono and f.hmem2idxno=a.hclmidxno and f.hmem2seqno=a.hclmseqno and f.hmem2claim=a.hclmtclaim and f.hmem2count=a.hclmcount "
                     + "where "
                     + "b.hhdrinsid='" + Libs.getInsuranceId() + "' "
-                    + "and a.hclmrecid<>'C' ";
+                    + "and a.hclmrecid<>'C' and a.hclmidxno < 99989 and a.hclmpono <> 99999 ";
 
             if (getAttribute("excess")!=null && ((Boolean) getAttribute("excess"))) {
                 qry += "and ((" + Libs.createAddFieldString("a.hclmcamt") + ")- "
@@ -120,6 +120,8 @@ public class ClaimListController extends Window {
             }
 
             String order = "order by convert(date,convert(varchar,a.hclmcdated)+'-'+convert(varchar,a.hclmcdatem)+'-'+convert(varchar,a.hclmcdatey),105) desc ";
+            
+           
 
             List<Object[]> l = s.createSQLQuery(select + qry + order).setFirstResult(offset).setMaxResults(limit).list();
             for (Object[] o : l) {
@@ -146,20 +148,31 @@ public class ClaimListController extends Window {
                 li.appendChild(new Listcell(provider));
 
                 lb.appendChild(li);
+                
+                PolicyPOJO policyPOJO = new PolicyPOJO();
+                policyPOJO.setYear(Integer.valueOf(Libs.nn(o[1])));
+                policyPOJO.setBr(Integer.valueOf(Libs.nn(o[2])));
+                policyPOJO.setDist(Integer.valueOf(Libs.nn(o[3])));
+                policyPOJO.setPolicy_number(Integer.valueOf(Libs.nn(o[4])));
+                policyPOJO.setName(Libs.nn(o[5]));
 
                 ClaimPOJO claimPOJO = new ClaimPOJO();
+                claimPOJO.setPolicy(policyPOJO);
                 claimPOJO.setClaim_number(Libs.nn(o[0]).trim());
                 claimPOJO.setPolicy_number(Libs.nn(o[1]) + '-' + Libs.nn(o[2]) + '-' + Libs.nn(o[3]) + '-' + Libs.nn(o[4]));
                 claimPOJO.setIndex(Libs.nn(o[6]) + '-' + Libs.nn(o[7]).trim());
                 claimPOJO.setClaim_count(Integer.valueOf(Libs.nn(o[13])));
 
                 li.setValue(claimPOJO);
+                
+              
             }
 
             BigDecimal totalApproved = (BigDecimal) s.createSQLQuery(selectTotalApproved + qry).uniqueResult();
             ftr.setLabel("Total approved by analyst: " + new DecimalFormat("#,###.##").format(totalApproved));
         } catch (Exception ex) {
             log.error("populate", ex);
+            
         } finally {
             if (s!=null && s.isOpen()) s.close();
         }
@@ -174,7 +187,7 @@ public class ClaimListController extends Window {
                     + "inner join idnhltpf.dbo.hlthdr b on b.hhdryy=a.hclmyy and b.hhdrpono=a.hclmpono "
                     + "where "
                     + "b.hhdrinsid='" + Libs.getInsuranceId() + "' "
-                    + "and a.hclmrecid<>'C' ";
+                    + "and a.hclmrecid<>'C' and a.hclmidxno < 99989 and a.hclmpono <> 99999 ";
 
             if (getAttribute("excess")!=null && ((Boolean) getAttribute("excess"))) {
                 qry += "and ((" + Libs.createAddFieldString("a.hclmcamt") + ")- "
